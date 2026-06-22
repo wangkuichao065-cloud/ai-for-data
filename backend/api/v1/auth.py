@@ -1,8 +1,9 @@
 """用户认证路由 — /api/v1/auth"""
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from database.mysql_client import get_db
-from models.schemas import RegisterRequest, LoginRequest, RefreshRequest, PasswordChangeRequest
+from models.schemas import RegisterRequest, LoginRequest, RefreshRequest, PasswordChangeRequest, ProfileUpdateRequest
 from api.deps import get_current_user
 from service import auth_service
 from utils.response import success, error
@@ -46,6 +47,47 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me")
 async def me(user: UserOut = Depends(get_current_user)):
     return success(user.model_dump())
+
+
+@router.put("/me")
+async def update_profile(req: ProfileUpdateRequest, user: UserOut = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """更新用户资料（昵称、邮箱、手机、头像）"""
+    try:
+        fields = []
+        params = {"uid": user.user_id}
+        for col, val in [("nickname", req.nickname), ("email", req.email), ("phone", req.phone), ("avatar", req.avatar)]:
+            if val is not None:
+                fields.append(f"{col} = :{col}")
+                params[col] = val
+        if not fields:
+            return error(400, "没有需要更新的字段")
+
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        fields.append("updated_at = :now")
+        params["now"] = now
+
+        await db.execute(
+            text(f"UPDATE users SET {', '.join(fields)} WHERE user_id = :uid"),
+            params
+        )
+        await db.commit()
+
+        # 返回更新后的用户信息
+        result = await db.execute(
+            text("SELECT user_id, username, email, phone, nickname, role, avatar, login_count, last_login FROM users WHERE user_id = :uid"),
+            {"uid": user.user_id}
+        )
+        row = result.mappings().first()
+        updated = UserOut(
+            user_id=row["user_id"], username=row["username"], email=row["email"],
+            phone=row["phone"], nickname=row["nickname"], role=row["role"],
+            avatar=row["avatar"], login_count=row["login_count"],
+            last_login=str(row["last_login"]) if row["last_login"] else None
+        )
+        return success(updated.model_dump(), "资料更新成功")
+    except Exception as e:
+        return error(500, f"更新失败: {e}")
 
 
 @router.put("/password")

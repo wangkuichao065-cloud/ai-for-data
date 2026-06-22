@@ -38,6 +38,18 @@ async def status(file_id: str):
         return error(500, f"获取状态失败: {e}")
 
 
+@router.get("/{file_id}")
+async def file_detail(file_id: str, user: UserOut = Depends(get_current_user)):
+    """获取文件完整详情"""
+    try:
+        data = await file_service.get_file_detail(file_id)
+        if not data:
+            return error(404, "文件不存在")
+        return success(data)
+    except Exception as e:
+        return error(500, f"获取文件详情失败: {e}")
+
+
 @router.get("")
 async def list_files(course: str = Query(default=None), page: int = Query(1), page_size: int = Query(20)):
     try:

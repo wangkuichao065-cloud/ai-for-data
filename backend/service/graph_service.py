@@ -8,7 +8,7 @@ logger = get_logger()
 async def get_visualization_data(course: str = None, depth: int = 2, limit: int = 200) -> dict:
     """获取知识图谱可视化数据（节点+边）"""
     course_filter = ""
-    params = {"limit": limit}
+    params = {}
     if course:
         course_filter = "WHERE n.node_id STARTS WITH $prefix"
         params["prefix"] = course[:2]  # 'ml' or 'dm'
@@ -16,14 +16,14 @@ async def get_visualization_data(course: str = None, depth: int = 2, limit: int 
     nodes_data = await run_query(f"""
         MATCH (n) {course_filter}
         RETURN n.node_id AS id, n.name AS label, labels(n)[0] AS type, properties(n) AS props
-        LIMIT $limit
+        LIMIT {int(limit)}
     """, params)
 
     edges_data = await run_query(f"""
         MATCH (a)-[r]->(b)
         RETURN a.node_id AS source, b.node_id AS target, type(r) AS relation, properties(r) AS props
-        LIMIT $limit
-    """)
+        LIMIT {int(limit)}
+    """, {})
 
     categories = [
         {"name": "Course"}, {"name": "Chapter"},
@@ -75,11 +75,11 @@ async def search_nodes(keyword: str, course: str = None, limit: int = 10) -> lis
     cypher = """
         MATCH (n) WHERE n.name CONTAINS $kw OR any(k IN COALESCE(n.keywords, []) WHERE k CONTAINS $kw)
     """
-    params = {"kw": keyword, "limit": limit}
+    params = {"kw": keyword}
     if course:
         cypher += " AND n.node_id STARTS WITH $prefix"
         params["prefix"] = course[:2]
-    cypher += " RETURN n.node_id AS node_id, n.name AS label, labels(n)[0] AS type, n.node_id AS course_ref LIMIT $limit"
+    cypher += f" RETURN n.node_id AS node_id, n.name AS label, labels(n)[0] AS type, n.node_id AS course_ref LIMIT {int(limit)}"
     return await run_query(cypher, params)
 
 

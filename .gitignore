@@ -48,3 +48,4 @@ desktop.ini
 # Node
 node_modules/
 ~$*.doc
+index-tts/

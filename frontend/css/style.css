@@ -787,3 +787,214 @@ html, body {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .chart-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================
+   Login Page
+   ============================================ */
+.login-page {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4f46e5 70%, #6366f1 100%);
+}
+
+.login-bg::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+  top: -200px;
+  right: -100px;
+}
+
+.login-bg::after {
+  content: '';
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+  bottom: -100px;
+  left: -100px;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 440px;
+  max-width: 90vw;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-logo {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.login-hint {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   Streaming Cursor
+   ============================================ */
+.cursor-blink {
+  display: inline-block;
+  animation: blink 1s infinite;
+  color: var(--primary);
+  font-weight: 300;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ============================================
+   QA Feedback
+   ============================================ */
+.qa-feedback {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.qa-feedback .el-button {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+/* ============================================
+   Page Loading
+   ============================================ */
+.page-loading {
+  padding: 20px;
+}
+
+/* ============================================
+   Files Page
+   ============================================ */
+.files-page {
+  max-width: 1000px;
+}
+
+.files-page .el-upload-dragger {
+  width: 100%;
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  transition: var(--transition);
+}
+
+.files-page .el-upload-dragger:hover {
+  border-color: var(--primary);
+}
+
+.files-page .el-upload-dragger .el-icon--upload {
+  font-size: 48px;
+  color: var(--primary-light);
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   System Page
+   ============================================ */
+.system-page {
+  max-width: 1000px;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 8px;
+}
+
+.health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-dot.up { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.4); }
+.health-dot.down { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+
+.health-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ============================================
+   Profile Page
+   ============================================ */
+.profile-page {
+  padding: 20px 0;
+}
+
+/* ============================================
+   Table
+   ============================================ */
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.el-table th {
+  background: var(--bg) !important;
+  font-weight: 600;
+}
+
+/* ============================================
+   Status Dot (for teacher)
+   ============================================ */
+.status-dot.offline { background: #94a3b8; animation: none; }
+
+/* ============================================
+   ElMessage / ElNotification overrides
+   ============================================ */
+.el-message {
+  z-index: 9999 !important;
+}

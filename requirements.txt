@@ -43,6 +43,9 @@ accelerate==0.34.0
 # 需单独从 GitHub 安装: git clone https://github.com/index-tts/index-tts.git
 # 然后 uv sync --all-extras
 
+# 语音合成
+edge-tts==7.2.8
+
 # 工具
 python-dotenv==1.0.1
 loguru==0.7.2

@@ -2,6 +2,85 @@
  * Mock 数据层 — 后端就绪前使用
  */
 
+// ===== 认证 & 用户 =====
+const authUser = {
+  user_id: 1001,
+  username: 'admin',
+  nickname: '管理员',
+  email: 'admin@example.com',
+  role: 'admin',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+  token: 'mock-jwt-token-abc123def456',
+}
+
+const profile = {
+  user_id: 1001,
+  username: 'admin',
+  nickname: '管理员',
+  email: 'admin@example.com',
+  phone: '13800138000',
+  role: 'admin',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+}
+
+// ===== 文件管理 =====
+const files = [
+  { file_id: 1, filename: '机器学习导论.pdf', course: 'machine_learning', file_type: 'pdf', file_size: 2048576, chunk_count: 12, status: 'ready', created_at: '2025-06-01T08:30:00Z' },
+  { file_id: 2, filename: '线性模型讲义.docx', course: 'machine_learning', file_type: 'docx', file_size: 512000, chunk_count: 6, status: 'ready', created_at: '2025-06-03T10:15:00Z' },
+  { file_id: 3, filename: '决策树笔记.md', course: 'machine_learning', file_type: 'md', file_size: 15360, chunk_count: 3, status: 'ready', created_at: '2025-06-05T14:00:00Z' },
+  { file_id: 4, filename: '数据挖掘概述.pdf', course: 'data_mining', file_type: 'pdf', file_size: 1536000, chunk_count: 9, status: 'ready', created_at: '2025-06-07T09:00:00Z' },
+  { file_id: 5, filename: '关联规则挖掘.docx', course: 'data_mining', file_type: 'docx', file_size: 409600, chunk_count: 5, status: 'ready', created_at: '2025-06-08T11:20:00Z' },
+  { file_id: 6, filename: '聚类算法实验.pdf', course: 'data_mining', file_type: 'pdf', file_size: 1024000, chunk_count: 7, status: 'processing', created_at: '2025-06-10T16:45:00Z' },
+  { file_id: 7, filename: '神经网络入门.txt', course: 'machine_learning', file_type: 'txt', file_size: 8192, chunk_count: 2, status: 'ready', created_at: '2025-06-11T08:00:00Z' },
+  { file_id: 8, filename: 'SVM核函数详解.md', course: 'machine_learning', file_type: 'md', file_size: 20480, chunk_count: 4, status: 'ready', created_at: '2025-06-12T13:30:00Z' },
+]
+
+// ===== 系统健康 =====
+const systemHealth = {
+  mysql: { status: 'up', latency_ms: 3 },
+  neo4j: { status: 'up', latency_ms: 12 },
+  ollama: { status: 'up', latency_ms: 45 },
+  faiss: { status: 'up', latency_ms: 2 },
+  gpu: { status: 'up', utilization: 0.35 },
+}
+
+// ===== 模型状态 =====
+const modelStatus = {
+  llm: {
+    model: 'deepseek-r1:7b',
+    status: 'loaded',
+    vram_used_gb: 4.5,
+    vram_total_gb: 8.0,
+  },
+  embedding: {
+    model: 'bge-small-zh-v1.5',
+    status: 'loaded',
+  },
+  faiss: {
+    total_vectors: 1250,
+    dimension: 512,
+    index_type: 'IVFFlat',
+  },
+}
+
+// ===== 系统配置 =====
+const systemConfig = {
+  llm_model: 'deepseek-r1:7b',
+  temperature: 0.7,
+  max_tokens: 2048,
+  rag_top_k: 5,
+  enable_graph: true,
+}
+
+// ===== 公告 =====
+const announcements = [
+  { id: 1, title: '系统上线公告', content: '智能答疑系统正式上线，欢迎全体师生使用！如遇问题请通过问答页面提交反馈。', created_at: '2025-06-01T00:00:00Z' },
+  { id: 2, title: '知识库更新通知', content: '机器学习课程已新增 3 份教学文档，涵盖线性模型、决策树和支持向量机章节。', created_at: '2025-06-05T09:00:00Z' },
+  { id: 3, title: '模型升级公告', content: 'LLM 模型已升级至 deepseek-r1:7b，回答质量和推理速度均有显著提升。', created_at: '2025-06-08T10:00:00Z' },
+  { id: 4, title: '数据挖掘课程资料导入', content: '数据挖掘课程的关联规则挖掘、聚类算法等文档已完成导入，可进行问答测试。', created_at: '2025-06-10T14:00:00Z' },
+  { id: 5, title: '系统维护通知', content: '计划于本周六 02:00-04:00 进行系统维护升级，届时服务将短暂不可用，请提前做好准备。', created_at: '2025-06-12T16:00:00Z' },
+]
+
 // ===== 仪表盘 =====
 const dashboard = {
   kpis: [
@@ -272,19 +351,66 @@ const analysis = {
 
 // ===== Mock 路由 =====
 export function mockGet(path) {
+  // --- 认证 ---
+  if (path.includes('/auth/me')) return { code: 200, data: profile }
+
+  // --- 文件管理 ---
+  if (path.includes('/files')) return { code: 200, data: files }
+
+  // --- 仪表盘 ---
   if (path.includes('/dashboard/overview')) return { code: 200, data: dashboard }
+
+  // --- 知识图谱 ---
   if (path.includes('/graph/visualization')) return { code: 200, data: graph }
+
+  // --- 问答 ---
   if (path.includes('/qa/sessions')) return { code: 200, data: qa.sessions }
+
+  // --- 数字教师 ---
   if (path.includes('/teacher/avatar')) return { code: 200, data: teacher }
+
+  // --- 数据分析 ---
   if (path.includes('/question-trend')) return { code: 200, data: analysis.questionTrend }
   if (path.includes('/topic-heatmap')) return { code: 200, data: analysis.topicHeatmap }
   if (path.includes('/user-activity')) return { code: 200, data: analysis.userActivity }
   if (path.includes('/satisfaction')) return { code: 200, data: analysis.satisfaction }
   if (path.includes('/mastery-radar')) return { code: 200, data: analysis.masteryRadar }
+
+  // --- 系统 ---
+  if (path.includes('/system/health')) return { code: 200, data: systemHealth }
+  if (path.includes('/system/model-status')) return { code: 200, data: modelStatus }
+  if (path.includes('/system/config')) return { code: 200, data: systemConfig }
+  if (path.includes('/system/announcements')) return { code: 200, data: announcements }
+
   return { code: 404, data: null }
 }
 
 export function mockPost(path, body) {
+  // --- 认证 ---
+  if (path.includes('/auth/login')) {
+    return { code: 200, data: { token: authUser.token, user: { ...authUser, token: undefined } } }
+  }
+  if (path.includes('/auth/register')) {
+    return { code: 200, data: { message: '注册成功', user_id: 1002 } }
+  }
+  if (path.includes('/auth/password')) {
+    return { code: 200, data: { message: '密码修改成功' } }
+  }
+
+  // --- 文件管理 ---
+  if (path.includes('/files/upload')) {
+    return { code: 200, data: { message: '文件上传成功', file_id: Date.now() % 100000 } }
+  }
+  if (path.includes('/files/rebuild-index')) {
+    return { code: 200, data: { message: '索引重建任务已提交', task_id: 'idx_' + Date.now() } }
+  }
+
+  // --- 系统配置 ---
+  if (path.includes('/system/config')) {
+    return { code: 200, data: { message: '配置保存成功' } }
+  }
+
+  // --- 问答 ---
   if (path.includes('/qa/ask-sync')) {
     const q = body.question || ''
     let answer = ''
@@ -314,6 +440,7 @@ export function mockPost(path, body) {
     }
   }
 
+  // --- 数字教师 ---
   if (path.includes('/teacher/chat')) {
     const q = body.question || ''
     return {

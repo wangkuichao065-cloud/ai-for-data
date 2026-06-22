@@ -13,6 +13,7 @@ CREATE DATABASE IF NOT EXISTS data_analysis_system
 USE data_analysis_system;
 
 -- 关闭外键检查（便于重建）
+SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ============================================================

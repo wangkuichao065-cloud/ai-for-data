@@ -49,6 +49,18 @@ async def tts(req: TTSRequest, user: UserOut = Depends(get_current_user)):
         return error(500, f"语音合成失败: {e}")
 
 
+@router.get("/tts/voices")
+async def list_voices():
+    """获取可用的TTS语音列表"""
+    voices = [
+        {"id": "default", "name": "默认女声", "language": "zh-CN", "gender": "female"},
+        {"id": "xiaoxiao", "name": "晓晓", "language": "zh-CN", "gender": "female"},
+        {"id": "yunxi", "name": "云希", "language": "zh-CN", "gender": "male"},
+        {"id": "yunyang", "name": "云扬", "language": "zh-CN", "gender": "male"},
+    ]
+    return success({"voices": voices, "default": "default"})
+
+
 @router.get("/progress")
 async def progress(user: UserOut = Depends(get_current_user)):
     """获取学习进度"""

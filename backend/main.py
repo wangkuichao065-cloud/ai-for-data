@@ -21,11 +21,21 @@ logger = get_logger()
 async def lifespan(app: FastAPI):
     """应用生命周期: 启动时初始化, 关闭时清理"""
     logger.info("=== {} v{} 启动中 ===", config.APP_TITLE, config.APP_VERSION)
-    await test_connection()
+    # 数据库连接失败不阻止启动，进入降级模式
+    try:
+        await test_connection()
+    except Exception as e:
+        logger.warning("MySQL 连接失败，后端以降级模式启动: {}", e)
     yield
     # 关闭连接
-    await engine.dispose()
-    await close_driver()
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
+    try:
+        await close_driver()
+    except Exception:
+        pass
     logger.info("=== 应用已关闭 ===")
 
 

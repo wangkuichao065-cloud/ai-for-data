@@ -1,6 +1,5 @@
 """系统管理服务层 — 健康检查、模型状态、配置管理"""
 import os
-import torch
 from sqlalchemy import text
 from database.mysql_client import AsyncSessionLocal
 from service.llm_service import check_ollama_status
@@ -44,16 +43,20 @@ async def health_check() -> dict:
     except Exception as e:
         services["faiss"] = {"status": "down", "error": str(e)}
 
-    # GPU
+    # GPU (懒加载 torch，避免未安装时崩溃)
     gpu = {}
-    if torch.cuda.is_available():
-        gpu = {
-            "device": torch.cuda.get_device_name(0),
-            "total_memory_gb": round(torch.cuda.get_device_properties(0).total_memory / 1e9, 1),
-            "used_memory_gb": round(torch.cuda.memory_allocated() / 1e9, 1),
-            "free_memory_gb": round((torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / 1e9, 1),
-        }
-    else:
+    try:
+        import torch
+        if torch.cuda.is_available():
+            gpu = {
+                "device": torch.cuda.get_device_name(0),
+                "total_memory_gb": round(torch.cuda.get_device_properties(0).total_memory / 1e9, 1),
+                "used_memory_gb": round(torch.cuda.memory_allocated() / 1e9, 1),
+                "free_memory_gb": round((torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / 1e9, 1),
+            }
+        else:
+            gpu = {"device": "CPU", "total_memory_gb": 0, "used_memory_gb": 0, "free_memory_gb": 0}
+    except ImportError:
         gpu = {"device": "CPU", "total_memory_gb": 0, "used_memory_gb": 0, "free_memory_gb": 0}
 
     all_up = all(s.get("status") == "up" for s in services.values())

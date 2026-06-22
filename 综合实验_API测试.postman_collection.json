@@ -1,0 +1,941 @@
+{
+  "info": {
+    "name": "综合实验 API 测试集合",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "数据分析系统综合实践后端 API 测试集合\n\n包含 7 大模块 42 个接口：\n- 用户认证（注册/登录/Token）\n- 知识图谱（可视化/搜索/路径/统计）\n- 智能问答（RAG+DeepSeek 流式/同步）\n- 数字教师（对话/TTS/进度）\n- 数据分析（仪表盘/趋势/热度）\n- 文件管理（上传/索引重建）\n- 系统管理（健康检查/模型状态）\n\n使用前请先设置环境变量：\n- base_url: http://127.0.0.1:8000\n- 先执行「用户登录」获取 token，后续认证接口自动使用",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000" },
+    { "key": "token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "session_id", "value": "" },
+    { "key": "answer_id", "value": "" },
+    { "key": "file_id", "value": "" },
+    { "key": "node_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "系统根路径",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/",
+          "host": ["{{base_url}}"],
+          "path": [""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "健康检查",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "用户认证",
+      "item": [
+        {
+          "name": "1. 用户注册",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    pm.collectionVariables.set('user_id', json.data.user_id || json.data.id || '');",
+                  "    console.log('注册成功，用户ID:', json.data.user_id || json.data.id);",
+                  "}",
+                  "pm.test('注册响应正常', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser01\",\n  \"password\": \"Test123456\",\n  \"email\": \"testuser01@example.com\",\n  \"role\": \"student\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 用户登录（获取Token）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    var token = json.data.token || json.data.access_token || '';",
+                  "    var refreshToken = json.data.refresh_token || '';",
+                  "    pm.collectionVariables.set('token', token);",
+                  "    pm.collectionVariables.set('refresh_token', refreshToken);",
+                  "    if (json.data.user) {",
+                  "        pm.collectionVariables.set('user_id', json.data.user.user_id || json.data.user.id || '');",
+                  "    }",
+                  "    console.log('登录成功，Token已保存');",
+                  "}",
+                  "pm.test('登录成功', function() {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser01\",\n  \"password\": \"Test123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 刷新Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    var token = json.data.token || json.data.access_token || '';",
+                  "    pm.collectionVariables.set('token', token);",
+                  "    pm.collectionVariables.set('refresh_token', json.data.refresh_token || '');",
+                  "    console.log('Token已刷新');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 获取当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 修改密码",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"Test123456\",\n  \"new_password\": \"Test654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "password"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "知识图谱",
+      "item": [
+        {
+          "name": "1. 获取图谱可视化数据（全部）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/visualization?depth=2&limit=200",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "visualization"],
+              "query": [
+                { "key": "depth", "value": "2" },
+                { "key": "limit", "value": "200" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 获取图谱可视化数据（按课程筛选）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/visualization?course=machine_learning&depth=3&limit=100",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "visualization"],
+              "query": [
+                { "key": "course", "value": "machine_learning" },
+                { "key": "depth", "value": "3" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 查询知识点详情",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    pm.collectionVariables.set('node_id', json.data.node_id || json.data.id || 'ch01');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/node/ch01",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "node", "ch01"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 搜索知识节点",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/search?keyword=Transformer&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "search"],
+              "query": [
+                { "key": "keyword", "value": "Transformer" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 获取学习路径",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/path?source=ch01&target=ch14",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "path"],
+              "query": [
+                { "key": "source", "value": "ch01" },
+                { "key": "target", "value": "ch14" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. 获取课程知识树",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/tree/machine_learning",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "tree", "machine_learning"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. 获取图谱统计",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "stats"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. 新增知识节点（需教师权限）",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"图神经网络\",\n  \"type\": \"algorithm\",\n  \"course\": \"machine_learning\",\n  \"description\": \"基于图结构数据进行消息传递的深度学习模型\",\n  \"difficulty\": 4,\n  \"parent_id\": \"ch14\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/nodes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "nodes"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. 新增知识关系（需教师权限）",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_id\": \"ch14\",\n  \"target_id\": \"a_transformer\",\n  \"relation\": \"BASED_ON\",\n  \"properties\": {}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/edges",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "edges"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "智能问答",
+      "item": [
+        {
+          "name": "1. 创建新会话",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    pm.collectionVariables.set('session_id', json.data.session_id || json.data.id || '');",
+                  "    console.log('会话已创建:', json.data.session_id || json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"机器学习基础讨论\",\n  \"course\": \"machine_learning\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "sessions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 获取会话列表",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "sessions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 提问（SSE流式）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('SSE流式响应，状态码:', pm.response.code);",
+                  "pm.test('流式问答响应正常', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什么是支持向量机？\",\n  \"course\": \"machine_learning\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/ask",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "ask"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 提问（非流式）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    pm.collectionVariables.set('answer_id', json.data.answer_id || json.data.id || '');",
+                  "    console.log('回答ID:', json.data.answer_id || json.data.id);",
+                  "}",
+                  "pm.test('同步问答响应正常', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什么是K-Means聚类算法？\",\n  \"course\": \"machine_learning\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/ask-sync",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "ask-sync"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 获取对话历史",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/history/{{session_id}}?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "history", "{{session_id}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. 获取回答详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/answers/{{answer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "answers", "{{answer_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. 回答反馈",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"is_helpful\": true,\n  \"comment\": \"回答很清晰，帮助理解了基本原理\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/answers/{{answer_id}}/feedback",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "answers", "{{answer_id}}", "feedback"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. RAG知识库状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/rag/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "rag", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "9. 删除会话",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "sessions", "{{session_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "数字教师",
+      "item": [
+        {
+          "name": "1. 数字教师对话",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"请讲解一下K-Means聚类算法\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_voice\": false,\n  \"emotion\": \"auto\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/chat",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "chat"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 获取数字教师形象",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/avatar?emotion=normal",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "avatar"],
+              "query": [
+                { "key": "emotion", "value": "normal" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 获取教师形象（开心）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/avatar?emotion=happy",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "avatar"],
+              "query": [
+                { "key": "emotion", "value": "happy" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 文字转语音（TTS）",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"K-Means是一种经典的聚类算法，通过迭代将数据分成K个簇\",\n  \"voice\": \"default\",\n  \"speed\": 1.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/tts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "tts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 获取教学进度",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/progress",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "progress"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "数据分析",
+      "item": [
+        {
+          "name": "1. 仪表盘概览",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/overview",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "overview"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 提问趋势分析",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/question-trend?start_date=2026-06-01&end_date=2026-06-22&granularity=day",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "question-trend"],
+              "query": [
+                { "key": "start_date", "value": "2026-06-01" },
+                { "key": "end_date", "value": "2026-06-22" },
+                { "key": "granularity", "value": "day" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 知识点热度分析",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/topic-heatmap",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "topic-heatmap"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 用户活跃度分析",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/user-activity?start_date=2026-06-01&end_date=2026-06-22",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "user-activity"],
+              "query": [
+                { "key": "start_date", "value": "2026-06-01" },
+                { "key": "end_date", "value": "2026-06-22" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 满意度分析",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/satisfaction",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "satisfaction"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. 知识掌握度雷达图",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/mastery-radar",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "mastery-radar"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "文件管理",
+      "item": [
+        {
+          "name": "1. 上传知识库文档（需教师权限）",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.code === 200 && json.data) {",
+                  "    pm.collectionVariables.set('file_id', json.data.file_id || json.data.id || '');",
+                  "    console.log('文件已上传:', json.data.file_id || json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" },
+                { "key": "course", "value": "machine_learning", "type": "text" },
+                { "key": "category", "value": "教材", "type": "text" },
+                { "key": "description", "value": "机器学习基础教材", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/files/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files", "upload"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 查询文件处理状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/files/{{file_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files", "{{file_id}}", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 获取知识库文件列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/files?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 删除知识库文件（需教师权限）",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files", "{{file_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 重建向量索引（需管理员权限）",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/files/rebuild-index",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files", "rebuild-index"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "系统管理",
+      "item": [
+        {
+          "name": "1. 系统健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. 大模型状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/model-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "model-status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. 获取系统配置（需管理员权限）",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/config",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "config"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. 更新系统配置（需管理员权限）",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config_value\": \"0.8\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/config?key=llm_temperature",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "config"],
+              "query": [
+                { "key": "key", "value": "llm_temperature" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. 获取系统公告",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/announcements",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "announcements"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
