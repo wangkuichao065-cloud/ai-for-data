@@ -193,14 +193,14 @@ CREATE TABLE knowledge_files (
 DROP TABLE IF EXISTS file_tags;
 CREATE TABLE file_tags (
     tag_id      BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(50)  NOT NULL UNIQUE               COMMENT '标签名',
+    name        VARCHAR(50)  NOT NULL                     COMMENT '标签名',
     course      VARCHAR(50)  DEFAULT NULL                  COMMENT '所属课程(为空则全局通用)',
     color       VARCHAR(20)  DEFAULT '#409EFF'            COMMENT '标签颜色(前端展示)',
     sort_order  INT          DEFAULT 0                     COMMENT '排序',
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
 
-    INDEX idx_course (course),
-    INDEX idx_name (name)
+    UNIQUE KEY uk_name_course (name, course),
+    INDEX idx_course (course)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件分类标签表';
 
 -- ============================================================
@@ -584,17 +584,12 @@ WHERE table_schema = 'data_analysis_system';
 
 -- 各表行数
 SELECT
-    t.table_name                                                AS 表名,
-    t.table_comment                                             AS 说明,
-    IFNULL(r.rows, 0)                                           AS 行数
-FROM information_schema.tables t
-LEFT JOIN (
-    SELECT table_name, table_rows AS rows
-    FROM information_schema.tables
-    WHERE table_schema = 'data_analysis_system'
-) r ON t.table_name = r.table_name
-WHERE t.table_schema = 'data_analysis_system'
-ORDER BY t.table_name;
+    table_name      AS 表名,
+    table_comment   AS 说明,
+    table_rows      AS 估计行数
+FROM information_schema.tables
+WHERE table_schema = 'data_analysis_system'
+ORDER BY table_name;
 
 -- 外键关系验证
 SELECT
