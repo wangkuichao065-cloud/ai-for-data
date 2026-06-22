@@ -219,17 +219,22 @@ async function loadModel() {
       autoInteract: true,
     })
 
-    // 计算缩放
+    // 计算缩放 — Shizuku 模型原始尺寸较大，需要缩小
     const canvasW = pixiApp.screen.width
     const canvasH = pixiApp.screen.height
-    const modelW = live2dModel.width
-    const modelH = live2dModel.height
-    const scale = Math.min(canvasW / modelW, canvasH / modelH) * 0.85
-    live2dModel.scale.set(scale)
 
-    // 居中
-    live2dModel.x = (canvasW - live2dModel.width * scale) / 2
-    live2dModel.y = canvasH - live2dModel.height * scale + 10
+    // 先设置一个基准缩放，然后根据画布大小调整
+    live2dModel.scale.set(0.25)
+    const scaledW = live2dModel.width
+    const scaledH = live2dModel.height
+
+    // 如果模型还是太大，进一步缩小
+    const fitScale = Math.min(canvasW / scaledW * 0.9, canvasH / scaledH * 0.95, 1)
+    live2dModel.scale.set(0.25 * fitScale)
+
+    // 水平居中，垂直底部对齐
+    live2dModel.x = (canvasW - live2dModel.width) / 2
+    live2dModel.y = canvasH - live2dModel.height
 
     pixiApp.stage.addChild(live2dModel)
 
