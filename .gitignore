@@ -10,11 +10,16 @@ env/
 *.egg-info/
 dist/
 build/
+.eggs/
 
 # Virtual environments
 .env
 .venv
 env/
+
+# Neo4j data (if local)
+neo4j_data/
+logs/
 
 # IDE
 .vscode/
