@@ -152,52 +152,52 @@ const API = {
 
   // ============================================
   //  Auth - 认证接口
+  //  后端路由: register, login, refresh, me(GET), password(PUT)
   // ============================================
   auth: {
     register(data) { return API.post('/api/v1/auth/register', data); },
     login(username, password) { return API.post('/api/v1/auth/login', { username: username, password: password }); },
-    logout() { return API.post('/api/v1/auth/logout'); },
     refresh() { return API.post('/api/v1/auth/refresh'); },
-    getProfile() { return API.get('/api/v1/auth/profile'); },
-    updateProfile(data) { return API.put('/api/v1/auth/profile', data); },
+    getProfile() { return API.get('/api/v1/auth/me'); },
+    updateProfile(data) { return API.put('/api/v1/auth/me', data); },
     changePassword(oldPwd, newPwd) { return API.put('/api/v1/auth/password', { old_password: oldPwd, new_password: newPwd }); },
-    listUsers(params) { return API.get('/api/v1/auth/users', params); },
-    getUser(id) { return API.get('/api/v1/auth/users/' + id); }
+    // logout 是前端本地操作（清除token），后端无logout端点
+    logout() { this.clearToken(); return Promise.resolve({ code: 200, message: '已退出' }); }
   },
 
   // ============================================
   //  Graph - 知识图谱接口
+  //  后端路由: visualization, node/{id}, search, path, tree/{course}, stats, nodes(POST), edges(POST)
   // ============================================
   graph: {
-    overview() { return API.get('/api/v1/graph/overview'); },
-    courses() { return API.get('/api/v1/graph/courses'); },
-    courseTree(code) { return API.get('/api/v1/graph/course/' + code + '/tree'); },
+    overview() { return API.get('/api/v1/graph/visualization'); },
+    courseTree(code) { return API.get('/api/v1/graph/tree/' + code); },
     search(keyword, course) { return API.get('/api/v1/graph/search', { keyword: keyword, course: course }); },
     nodeDetail(nodeId) { return API.get('/api/v1/graph/node/' + nodeId); },
-    path(start, end) { return API.get('/api/v1/graph/path', { start: start, end: end }); },
-    algorithms(course) { return API.get('/api/v1/graph/algorithms', { course: course }); },
-    applications(course) { return API.get('/api/v1/graph/applications', { course: course }); },
+    path(start, end) { return API.get('/api/v1/graph/path', { source: start, target: end }); },
     stats() { return API.get('/api/v1/graph/stats'); }
   },
 
   // ============================================
   //  QA - 智能问答接口
+  //  后端路由: ask(SSE流式), ask-sync(同步), sessions, sessions/{id}, history/{id}, answers/{id}, answers/{id}/feedback, rag/status
   // ============================================
   qa: {
     listSessions() { return API.get('/api/v1/qa/sessions'); },
     createSession(title, course) { return API.post('/api/v1/qa/sessions', { title: title, course: course }); },
     deleteSession(id) { return API.del('/api/v1/qa/sessions/' + id); },
+    // 同步问答（非流式）
     ask(question, sessionId, enableRag, enableGraph) {
-      return API.post('/api/v1/qa/ask', {
+      return API.post('/api/v1/qa/ask-sync', {
         question: question,
         session_id: sessionId,
         enable_rag: enableRag !== false,
         enable_graph: enableGraph !== false
       });
     },
-    // SSE 流式问答 - 返回 async generator
+    // SSE 流式问答 - POST /api/v1/qa/ask 返回 text/event-stream
     askStream(question, sessionId, enableRag, enableGraph) {
-      return API.stream('/api/v1/qa/ask-stream', {
+      return API.stream('/api/v1/qa/ask', {
         question: question,
         session_id: sessionId,
         enable_rag: enableRag !== false,
@@ -205,29 +205,29 @@ const API = {
       });
     },
     history(sessionId) { return API.get('/api/v1/qa/history/' + sessionId); },
-    answerDetail(answerId) { return API.get('/api/v1/qa/answer/' + answerId); },
+    answerDetail(answerId) { return API.get('/api/v1/qa/answers/' + answerId); },
     feedback(answerId, rating, comment) {
-      return API.post('/api/v1/qa/feedback', { answer_id: answerId, rating: rating, comment: comment });
+      return API.post('/api/v1/qa/answers/' + answerId + '/feedback', { rating: rating, comment: comment || '' });
     },
-    ragStatus() { return API.get('/api/v1/qa/rag-status'); }
+    ragStatus() { return API.get('/api/v1/qa/rag/status'); }
   },
 
   // ============================================
   //  Teacher - 数字教师接口
+  //  后端路由: chat(POST), avatar(GET), tts(POST), progress(GET)
   // ============================================
   teacher: {
     chat(question, emotion) {
       return API.post('/api/v1/teacher/chat', { question: question, emotion: emotion || 'normal' });
     },
-    stream(question, emotion) {
-      return API.stream('/api/v1/teacher/stream', { question: question, emotion: emotion || 'normal' });
-    },
+    avatar() { return API.get('/api/v1/teacher/avatar'); },
     progress() { return API.get('/api/v1/teacher/progress'); },
-    voices() { return API.get('/api/v1/teacher/voices'); }
+    voices() { return API.get('/api/v1/teacher/tts/voices'); }
   },
 
   // ============================================
   //  Dashboard - 数据分析接口
+  //  后端路由: overview, question-trend, topic-heatmap, user-activity, satisfaction, mastery-radar
   // ============================================
   dashboard: {
     overview() { return API.get('/api/v1/dashboard/overview'); },
@@ -235,17 +235,19 @@ const API = {
     topicHeatmap(params) { return API.get('/api/v1/dashboard/topic-heatmap', params); },
     userActivity(params) { return API.get('/api/v1/dashboard/user-activity', params); },
     satisfaction(params) { return API.get('/api/v1/dashboard/satisfaction', params); },
-    mastery(params) { return API.get('/api/v1/dashboard/mastery', params); }
+    mastery(params) { return API.get('/api/v1/dashboard/mastery-radar', params); }
   },
 
   // ============================================
   //  Files - 文件管理接口
+  //  后端路由: upload(POST), list(GET ""), {id}/status(GET), {id}(DELETE), rebuild-index(POST)
   // ============================================
   files: {
     upload(file, course, tags) { return API.upload('/api/v1/files/upload', file, { course: course, tags: tags || '' }); },
     list(params) { return API.get('/api/v1/files', params); },
+    status(id) { return API.get('/api/v1/files/' + id + '/status'); },
     detail(id) { return API.get('/api/v1/files/' + id); },
-    download(id) { return API.get('/api/v1/files/' + id + '/download'); },
+    delete(id) { return API.del('/api/v1/files/' + id); },
     rebuildIndex() { return API.post('/api/v1/files/rebuild-index'); }
   },
 
@@ -288,7 +290,7 @@ const API = {
     }
 
     // Graph
-    if (path === '/api/v1/graph/overview' && method === 'GET') {
+    if (path === '/api/v1/graph/visualization' && method === 'GET') {
       return Promise.resolve({ code: 200, data: MockData.graph });
     }
     if (path === '/api/v1/graph/search' && method === 'GET') {
@@ -313,7 +315,7 @@ const API = {
     if (path === '/api/v1/dashboard/topic-heatmap' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.analysis.topicHeatmap });
     if (path === '/api/v1/dashboard/user-activity' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.analysis.userActivity });
     if (path === '/api/v1/dashboard/satisfaction' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.analysis.satisfaction });
-    if (path === '/api/v1/dashboard/mastery' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.analysis.masteryRadar });
+    if (path === '/api/v1/dashboard/mastery-radar' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.analysis.masteryRadar });
 
     // QA
     if (path === '/api/v1/qa/sessions' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.qa.sessions });
@@ -321,13 +323,14 @@ const API = {
       var sid = 'sess_' + Date.now();
       return Promise.resolve({ code: 200, data: { session_id: sid, title: (body && body.title) || '新对话', course: (body && body.course) || 'machine_learning' } });
     }
-    if (path === '/api/v1/qa/rag-status' && method === 'GET') {
+    if (path === '/api/v1/qa/rag/status' && method === 'GET') {
       return Promise.resolve({ code: 200, data: { total_files: 5, total_chunks: 128, index_size: 512, embedding_model: 'bge-small-zh-v1.5' } });
     }
 
     // Teacher
+    if (path === '/api/v1/teacher/avatar' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.teacher });
     if (path === '/api/v1/teacher/progress' && method === 'GET') return Promise.resolve({ code: 200, data: MockData.teacher });
-    if (path === '/api/v1/teacher/voices' && method === 'GET') {
+    if (path === '/api/v1/teacher/tts/voices' && method === 'GET') {
       return Promise.resolve({ code: 200, data: { voices: ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural'], default: 'zh-CN-XiaoxiaoNeural' } });
     }
 

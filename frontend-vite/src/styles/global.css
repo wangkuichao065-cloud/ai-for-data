@@ -140,6 +140,9 @@ html, body {
   font-size: 13px;
   color: var(--text-secondary);
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .progress-track {
   flex: 1;
@@ -273,17 +276,272 @@ html, body {
 }
 .ref-item:hover { text-decoration: underline; }
 
+/* ---- 通用网格 ---- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+}
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+/* ---- Section 卡片 ---- */
+.section-card {
+  margin-bottom: 20px;
+  border-radius: var(--radius);
+}
+.section-card :deep(.el-card__header) {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.section-card :deep(.el-card__body) {
+  padding: 20px;
+}
+
+/* ---- 登录页 ---- */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #3730a3 70%, #4f46e5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.login-page .circle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.1;
+  background: #fff;
+}
+.login-page .circle-top-right {
+  width: 400px;
+  height: 400px;
+  top: -120px;
+  right: -100px;
+}
+.login-page .circle-bottom-left {
+  width: 300px;
+  height: 300px;
+  bottom: -80px;
+  left: -60px;
+}
+.login-page .login-card {
+  width: 420px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.login-page .login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+.login-page .login-header .logo {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+.login-page .login-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.login-page .login-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.login-page .gradient-btn {
+  background: var(--gradient) !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 600;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.login-page .gradient-btn:hover {
+  opacity: 0.9;
+}
+
+/* ---- 健康状态网格 ---- */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border-radius: 10px;
+}
+.health-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.health-dot.up {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+.health-dot.down {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+/* ---- 文件管理页 ---- */
+.upload-area {
+  margin-bottom: 20px;
+}
+.upload-area :deep(.el-upload-dragger) {
+  padding: 40px;
+  border-radius: var(--radius);
+  border: 2px dashed var(--border);
+  transition: border-color 0.3s;
+}
+.upload-area :deep(.el-upload-dragger:hover) {
+  border-color: var(--primary);
+}
+
+/* ---- 公告列表 ---- */
+.announcement-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.announcement-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.announcement-item:last-child {
+  border-bottom: none;
+}
+.announcement-item .title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.announcement-item .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---- 图谱预览 ---- */
+.graph-preview {
+  width: 100%;
+  height: 240px;
+}
+
+/* ---- 教师面板 ---- */
+.teacher-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+.teacher-panel .teacher-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.teacher-panel .teacher-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+/* ---- 光标闪烁 ---- */
+.cursor-blink::after {
+  content: '|';
+  animation: blink 1s infinite;
+  color: var(--primary);
+}
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ---- 热门排名编号 ---- */
+.rank-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+.rank-number.r1 { background: linear-gradient(135deg, #f59e0b, #f97316); }
+.rank-number.r2 { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
+.rank-number.r3 { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+.rank-number.r4, .rank-number.r5,
+.rank-number.r6, .rank-number.r7 {
+  background: #cbd5e1;
+  color: var(--text-secondary);
+}
+
 /* ---- 滚动条 ---- */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
+/* ---- Element Plus 覆盖 ---- */
+.el-card {
+  border: none !important;
+  box-shadow: var(--shadow) !important;
+  border-radius: var(--radius) !important;
+}
+
+.el-table {
+  --el-table-border-color: var(--border);
+  --el-table-header-bg-color: var(--bg);
+}
+
 /* ---- 响应式 ---- */
+@media (max-width: 1400px) {
+  .grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 1200px) {
   .hide-mobile { display: none !important; }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .app-main { padding: 12px; }
+  .grid-4, .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .kpi-value { font-size: 22px; }
+  .login-page .login-card {
+    width: 90%;
+    padding: 24px;
+  }
 }

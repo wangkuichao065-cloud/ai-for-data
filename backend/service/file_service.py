@@ -115,6 +115,31 @@ async def get_file_status(file_id: str) -> dict:
         return dict(row) if row else None
 
 
+async def get_file_detail(file_id: str) -> dict:
+    """获取文件完整详情"""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            text("""SELECT file_id, filename, file_type, file_size, file_hash, course,
+                    description, total_chunks, total_tokens, status, error_message,
+                    uploaded_by, created_at, updated_at
+                    FROM knowledge_files WHERE file_id = :fid"""),
+            {"fid": file_id}
+        )
+        row = result.mappings().first()
+        if not row:
+            return None
+
+        detail = dict(row)
+
+        # 获取分块数量
+        chunk_result = await db.execute(
+            text("SELECT COUNT(*) AS chunk_count FROM file_chunks WHERE file_id = :fid"),
+            {"fid": file_id}
+        )
+        detail["chunk_count"] = chunk_result.scalar()
+        return detail
+
+
 async def list_files(course: str = None, page: int = 1, page_size: int = 20) -> dict:
     async with AsyncSessionLocal() as db:
         offset = (page - 1) * page_size

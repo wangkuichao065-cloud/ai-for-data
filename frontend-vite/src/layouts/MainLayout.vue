@@ -38,6 +38,14 @@
           <el-icon><DataAnalysis /></el-icon>
           <template #title>数据分析</template>
         </el-menu-item>
+        <el-menu-item index="/files">
+          <el-icon><FolderOpened /></el-icon>
+          <template #title>文件管理</template>
+        </el-menu-item>
+        <el-menu-item index="/system">
+          <el-icon><Setting /></el-icon>
+          <template #title>系统管理</template>
+        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer">
@@ -52,19 +60,30 @@
       <header class="app-header">
         <h2 class="page-title">{{ $route.meta.title || '仪表盘' }}</h2>
         <div class="header-actions">
-          <el-badge :value="3" :max="99">
+          <!-- 全屏切换 -->
+          <el-button circle :icon="isFullscreen ? CopyDocument : FullScreen" size="default" @click="toggleFullscreen" />
+          <!-- 通知 -->
+          <el-badge :value="announcementCount" :max="99" :hidden="!announcementCount">
             <el-button circle :icon="Bell" size="default" />
           </el-badge>
-          <el-dropdown trigger="click">
+          <!-- 用户下拉 -->
+          <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-chip">
-              <el-avatar :size="30" class="user-avatar">S</el-avatar>
-              <span class="user-name">学生01</span>
+              <el-avatar :size="30" class="user-avatar">{{ avatarLetter }}</el-avatar>
+              <span class="user-name">{{ displayName }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item>个人设置</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>个人设置
+                </el-dropdown-item>
+                <el-dropdown-item command="system">
+                  <el-icon><Setting /></el-icon>系统管理
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
+                  <el-icon><SwitchButton /></el-icon>退出登录
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -83,10 +102,62 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Bell } from '@element-plus/icons-vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Bell, FullScreen, CopyDocument } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const collapsed = ref(false)
+const isFullscreen = ref(false)
+const announcementCount = ref(0)
+
+// 用户信息
+const displayName = computed(() => {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}')
+    return u.username || u.name || '学生01'
+  } catch { return '学生01' }
+})
+
+const avatarLetter = computed(() => {
+  const n = displayName.value
+  return n ? n.charAt(0).toUpperCase() : 'S'
+})
+
+// 全屏切换
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen()
+    isFullscreen.value = true
+  } else {
+    document.exitFullscreen()
+    isFullscreen.value = false
+  }
+}
+
+document.addEventListener('fullscreenchange', () => {
+  isFullscreen.value = !!document.fullscreenElement
+})
+
+// 下拉菜单命令
+function handleCommand(cmd) {
+  if (cmd === 'profile') router.push('/profile')
+  else if (cmd === 'system') router.push('/system')
+  else if (cmd === 'logout') {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    router.push('/login')
+  }
+}
+
+// 加载公告数量
+onMounted(async () => {
+  try {
+    const { systemAPI } = await import('@/api/index.js')
+    const res = await systemAPI.announcements()
+    announcementCount.value = Array.isArray(res) ? res.length : 0
+  } catch { /* 静默 */ }
+})
 </script>
 
 <style scoped>

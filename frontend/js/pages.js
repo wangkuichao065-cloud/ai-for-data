@@ -739,11 +739,20 @@ const TeacherPage = {
 
     onMounted(async function() {
       try {
-        var res = await API.teacher.progress();
-        if (res.code === 200 && res.data) {
-          teacher.value = { name: res.data.name || '小智老师', status: res.data.status || 'online' };
-          progress.value = res.data.progress || res.data;
-          if (res.data.emotions) emotions = res.data.emotions;
+        // 并行加载教师信息和学习进度
+        var results = await Promise.all([
+          API.teacher.avatar(),
+          API.teacher.progress()
+        ]);
+        if (results[0].code === 200 && results[0].data) {
+          teacher.value = {
+            name: results[0].data.name || '小智老师',
+            status: results[0].data.status || 'online'
+          };
+          if (results[0].data.emotions) emotions = results[0].data.emotions;
+        }
+        if (results[1].code === 200 && results[1].data) {
+          progress.value = results[1].data.progress || results[1].data;
         }
       } catch (e) { /* 静默 */ }
     });
@@ -984,9 +993,10 @@ const FilesPage = {
           <el-table-column prop="created_at" label="上传时间" width="180">
             <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="120">
+          <el-table-column label="操作" width="140">
             <template #default="{ row }">
-              <el-button text size="small" @click="downloadFile(row)">下载</el-button>
+              <el-button text size="small" @click="downloadFile(row)">详情</el-button>
+              <el-button text size="small" type="danger" @click="deleteFile(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1063,18 +1073,33 @@ const FilesPage = {
 
     async function downloadFile(row) {
       try {
-        var res = await API.files.download(row.file_id);
-        if (res.code === 200 && res.data instanceof Blob) {
-          var url = URL.createObjectURL(res.data);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = row.filename;
-          a.click();
-          URL.revokeObjectURL(url);
+        var res = await API.files.status(row.file_id);
+        if (res.code === 200 && res.data && res.data.file_path) {
+          // 如果后端返回文件路径，尝试通过静态文件访问
+          ElementPlus.ElMessage.info('文件状态: ' + (res.data.status || 'unknown'));
+        } else {
+          ElementPlus.ElMessage.info('文件状态: ' + (res.data ? res.data.status : 'unknown'));
         }
       } catch (e) {
-        ElementPlus.ElMessage.error('下载失败');
+        ElementPlus.ElMessage.error('获取文件信息失败');
       }
+    }
+
+    async function deleteFile(row) {
+      try {
+        await ElementPlus.ElMessageBox.confirm('确定要删除文件「' + row.filename + '」吗？', '确认', {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        var res = await API.files.delete(row.file_id);
+        if (res.code === 200) {
+          ElementPlus.ElMessage.success('已删除');
+          loadFiles();
+        } else {
+          ElementPlus.ElMessage.error(res.message || '删除失败');
+        }
+      } catch (e) { /* 取消 */ }
     }
 
     async function rebuildIndex() {
@@ -1097,7 +1122,7 @@ const FilesPage = {
 
     onMounted(loadFiles);
 
-    return { uploadRef, uploadCourse, uploadTags, fileList, tableLoading, rebuilding, formatSize, formatTime, loadFiles, beforeUpload, customUpload, onUploadSuccess, onUploadError, downloadFile, rebuildIndex };
+    return { uploadRef, uploadCourse, uploadTags, fileList, tableLoading, rebuilding, formatSize, formatTime, loadFiles, beforeUpload, customUpload, onUploadSuccess, onUploadError, downloadFile, deleteFile, rebuildIndex };
   }
 };
 

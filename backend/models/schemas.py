@@ -24,6 +24,12 @@ class PasswordChangeRequest(BaseModel):
     old_password: str
     new_password: str = Field(..., min_length=8)
 
+class ProfileUpdateRequest(BaseModel):
+    nickname: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    avatar: Optional[str] = None
+
 class UserOut(BaseModel):
     user_id: int
     username: str
