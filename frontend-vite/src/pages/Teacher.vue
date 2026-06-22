@@ -146,7 +146,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import * as PIXI from 'pixi.js'
-import { Live2DModel } from 'pixi-live2d-display/cubism4'
+import { Live2DModel } from 'pixi-live2d-display/cubism2'
 import api from '@/api'
 
 /* ========== Live2D ========== */
@@ -160,13 +160,8 @@ let lipSyncTimer = null
 
 const modelList = [
   {
-    name: 'Haru',
-    url: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json',
-  },
-  {
     name: 'Shizuku',
-    url: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json',
-    cubism2: true,
+    url: '/models/shizuku/shizuku.model.json',
   },
 ]
 let currentModelIndex = 0
