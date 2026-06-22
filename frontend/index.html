@@ -22,10 +22,20 @@
   <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue@2.3.1/dist/index.iife.min.js"></script>
   <!-- Marked.js for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <!-- DOMPurify for XSS prevention -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 </head>
 <body>
   <div id="app">
-    <el-container class="app-container">
+    <!-- 登录页独立渲染 -->
+    <template v-if="!globalState.loggedIn && $route.path === '/login'">
+      <router-view v-slot="{ Component }">
+        <component :is="Component" />
+      </router-view>
+    </template>
+
+    <!-- 主框架 -->
+    <el-container v-else class="app-container">
       <!-- 侧边栏 -->
       <el-aside :width="isCollapse ? '64px' : '220px'" class="sidebar">
         <div class="logo" @click="$router.push('/')">
@@ -41,25 +51,9 @@
           active-text-color="#ffffff"
           class="sidebar-menu"
         >
-          <el-menu-item index="/">
-            <el-icon><component :is="'Odometer'" /></el-icon>
-            <template #title>仪表盘</template>
-          </el-menu-item>
-          <el-menu-item index="/knowledge-graph">
-            <el-icon><component :is="'Share'" /></el-icon>
-            <template #title>知识图谱</template>
-          </el-menu-item>
-          <el-menu-item index="/qa">
-            <el-icon><component :is="'ChatDotRound'" /></el-icon>
-            <template #title>智能问答</template>
-          </el-menu-item>
-          <el-menu-item index="/teacher">
-            <el-icon><component :is="'User'" /></el-icon>
-            <template #title>数字教师</template>
-          </el-menu-item>
-          <el-menu-item index="/analysis">
-            <el-icon><component :is="'DataAnalysis'" /></el-icon>
-            <template #title>数据分析</template>
+          <el-menu-item v-for="item in menuItems" :key="item.index" :index="item.index">
+            <el-icon><component :is="item.icon" /></el-icon>
+            <template #title>{{ item.title }}</template>
           </el-menu-item>
         </el-menu>
         <div class="sidebar-footer">
@@ -76,18 +70,30 @@
             <h2 class="page-title">{{ pageTitle }}</h2>
           </div>
           <div class="header-right">
-            <el-badge :value="3" :max="99" class="header-badge">
-              <el-button circle :icon="'Bell'" />
+            <el-badge :value="announcementCount" :max="99" :hidden="announcementCount === 0" class="header-badge">
+              <el-button circle @click="$router.push('/system')">
+                <el-icon><component :is="'Bell'" /></el-icon>
+              </el-button>
             </el-badge>
-            <el-dropdown>
+            <el-dropdown @command="handleCommand">
               <div class="user-info">
-                <el-avatar :size="32" src="" class="user-avatar">S</el-avatar>
-                <span class="user-name">学生01</span>
+                <el-avatar :size="32" class="user-avatar">
+                  {{ (displayName || 'U').charAt(0).toUpperCase() }}
+                </el-avatar>
+                <span class="user-name">{{ displayName }}</span>
+                <el-tag size="small" type="info" style="margin-left:4px;">{{ roleLabel }}</el-tag>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item>个人设置</el-dropdown-item>
-                  <el-dropdown-item divided>退出登录</el-dropdown-item>
+                  <el-dropdown-item command="profile">
+                    <el-icon><component :is="'User'" /></el-icon> 个人设置
+                  </el-dropdown-item>
+                  <el-dropdown-item command="system">
+                    <el-icon><component :is="'Setting'" /></el-icon> 系统管理
+                  </el-dropdown-item>
+                  <el-dropdown-item command="logout" divided>
+                    <el-icon><component :is="'SwitchButton'" /></el-icon> 退出登录
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -105,7 +111,7 @@
     </el-container>
   </div>
 
-  <!-- JS Modules (order matters) -->
+  <!-- JS Modules (order matters: dependencies first) -->
   <script src="js/mock-data.js"></script>
   <script src="js/api.js"></script>
   <script src="js/charts.js"></script>

@@ -516,5 +516,18 @@ const Charts = {
       });
     }
     return chart;
-  }
+  },
+
+  // ---- 窗口大小变化时自动调整图表 ----
+  _instances: [],
+  register(chart) { this._instances.push(chart); return chart; },
+  resizeAll() { this._instances.forEach(function(c) { try { c.resize(); } catch (e) {} }); }
 };
+
+// 全局 resize 监听
+window.addEventListener('resize', function() {
+  if (window._chartResizeTimer) clearTimeout(window._chartResizeTimer);
+  window._chartResizeTimer = setTimeout(function() {
+    Charts.resizeAll();
+  }, 200);
+});
