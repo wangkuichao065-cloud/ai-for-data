@@ -59,8 +59,8 @@ def main():
             run_query,
             """
             MATCH (n:MLNode)
-            RETURN n.id AS id, n.name AS name, labels(n) AS labels
             WHERE NOT ()-->(n) AND NOT (n)-->()
+            RETURN n.id AS id, n.name AS name, labels(n) AS labels
             LIMIT 10
             """,
             "孤立节点检查（应返回空）"
@@ -116,10 +116,10 @@ def main():
             """
             MATCH (a:Algorithm {id: 'a_xgboost'})-[:BELONGS_TO]->(c:Concept)<-[:CONTAINS]-(ch:Chapter)
             MATCH (ch)-[:HAS_PREREQ*0..5]->(pre:Chapter)
-            WITH DISTINCT pre
+            WITH DISTINCT pre, pre.id AS pid, pre.name AS pname
             MATCH (pre)-[:CONTAINS]->(pc:Concept)
-            RETURN pre.name AS chapter, collect(pc.name)[0..5] AS key_concepts
-            ORDER BY pre.id
+            RETURN pname AS chapter, pid AS chapter_id, collect(pc.name)[0..5] AS key_concepts
+            ORDER BY chapter_id
             """,
             "学习 XGBoost 的前置知识链"
         )
@@ -129,10 +129,10 @@ def main():
             """
             MATCH (a:Algorithm {id: 'a_bert'})-[:BELONGS_TO]->(c:Concept)<-[:CONTAINS]-(ch:Chapter)
             MATCH (ch)-[:HAS_PREREQ*0..5]->(pre:Chapter)
-            WITH DISTINCT pre
+            WITH DISTINCT pre, pre.id AS pid, pre.name AS pname
             MATCH (pre)-[:CONTAINS]->(pc:Concept)
-            RETURN pre.name AS chapter, collect(pc.name)[0..5] AS key_concepts
-            ORDER BY pre.id
+            RETURN pname AS chapter, pid AS chapter_id, collect(pc.name)[0..5] AS key_concepts
+            ORDER BY chapter_id
             """,
             "学习 BERT 的前置知识链"
         )

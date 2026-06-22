@@ -29,10 +29,10 @@ MYSQL_URL = f"mysql+aiomysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL
 # ============================================================
 # Neo4j 配置
 # ============================================================
-NEO4J_URI = "bolt://127.0.0.1:7687"
+NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "neo4j"
-NEO4J_DATABASE = "knowledge_graph"
+NEO4J_PASSWORD = "12345678"
+NEO4J_DATABASE = "neo4j"  # 默认数据库，与 build_kg.py 一致
 
 # ============================================================
 # FAISS / Embedding 配置

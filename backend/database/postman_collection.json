@@ -1,0 +1,1247 @@
+{
+  "info": {
+    "name": "综合实验API测试",
+    "_postman_id": "ai-for-data-collection",
+    "description": "课程知识图谱与智能问答平台 — 全部API接口测试用例\n\n技术栈: FastAPI + Neo4j + MySQL + FAISS + Ollama(DeepSeek) + IndexTTS2\n\n使用前请先登录获取Token，后续请求自动携带。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "token", "value": "", "type": "string" },
+    { "key": "session_id", "value": "", "type": "string" },
+    { "key": "answer_id", "value": "", "type": "string" },
+    { "key": "file_id", "value": "", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "用户认证",
+      "description": "注册、登录、JWT Token 管理",
+      "item": [
+        {
+          "name": "1. 注册用户(student)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"Abc123456\",\n  \"email\": \"student01@example.com\",\n  \"role\": \"student\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/register"
+          },
+          "test": [
+            "pm.test('注册成功', function () {",
+            "    pm.response.to.have.status(200);",
+            "    var data = pm.response.json();",
+            "    pm.expect(data.code).to.eql(200);",
+            "    pm.expect(data.data.username).to.eql('student01');",
+            "});"
+          ]
+        },
+        {
+          "name": "2. 注册教师",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"teacher01\",\n  \"password\": \"Abc123456\",\n  \"email\": \"teacher01@example.com\",\n  \"role\": \"teacher\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "3. 注册管理员",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin01\",\n  \"password\": \"Abc123456\",\n  \"email\": \"admin01@example.com\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "4. 登录(student) ★获取Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('登录成功', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.code).to.eql(200);",
+                  "    pm.expect(data.data.token).to.not.be.empty;",
+                  "    // 保存Token到环境变量",
+                  "    pm.collectionVariables.set('token', data.data.token);",
+                  "    console.log('Token已保存: ' + data.data.token.substring(0, 30) + '...');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"Abc123456\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "5. 登录(teacher)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json();",
+                  "if (data.data && data.data.token) {",
+                  "    pm.collectionVariables.set('teacher_token', data.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"teacher01\",\n  \"password\": \"Abc123456\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "6. 刷新Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{token}}\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/refresh"
+          }
+        },
+        {
+          "name": "7. 获取当前用户信息",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/auth/me"
+          }
+        },
+        {
+          "name": "8. 修改密码",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"Abc123456\",\n  \"new_password\": \"Xyz789012\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/password"
+          }
+        },
+        {
+          "name": "9. 重复注册(应返回409)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"Abc123456\",\n  \"email\": \"student01@example.com\",\n  \"role\": \"student\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/register"
+          },
+          "test": [
+            "pm.test('重复注册返回冲突', function () {",
+            "    var data = pm.response.json();",
+            "    pm.expect(data.code).to.not.eql(200);",
+            "});"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "知识图谱",
+      "description": "知识图谱可视化、节点查询、搜索、路径、统计、CRUD",
+      "item": [
+        {
+          "name": "1. 获取图谱可视化数据(全部)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/visualization?depth=2&limit=200",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "visualization"],
+              "query": [
+                { "key": "depth", "value": "2" },
+                { "key": "limit", "value": "200" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2. 获取图谱数据(机器学习)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/visualization?course=machine_learning&depth=3&limit=100",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "visualization"],
+              "query": [
+                { "key": "course", "value": "machine_learning" },
+                { "key": "depth", "value": "3" },
+                { "key": "limit", "value": "100" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. 查询知识点详情(SVM)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/graph/node/kp_svm"
+          },
+          "test": [
+            "pm.test('SVM节点存在', function () {",
+            "    var data = pm.response.json().data;",
+            "    pm.expect(data.label).to.eql('支持向量机');",
+            "});"
+          ]
+        },
+        {
+          "name": "4. 搜索知识点(关键词:SVM)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/search?keyword=SVM&limit=5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "search"],
+              "query": [
+                { "key": "keyword", "value": "SVM" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. 搜索知识点(关键词:聚类)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/search?keyword=聚类",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "search"],
+              "query": [ { "key": "keyword", "value": "聚类" } ]
+            }
+          }
+        },
+        {
+          "name": "6. 查询学习路径(线性回归→SVM)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/graph/path?source=kp_lr&target=kp_svm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "graph", "path"],
+              "query": [
+                { "key": "source", "value": "kp_lr" },
+                { "key": "target", "value": "kp_svm" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. 获取课程知识树(机器学习)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/graph/tree/machine_learning"
+          }
+        },
+        {
+          "name": "8. 获取课程知识树(数据挖掘)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/graph/tree/data_mining"
+          }
+        },
+        {
+          "name": "9. 图谱统计信息",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/graph/stats"
+          },
+          "test": [
+            "pm.test('统计返回正确', function () {",
+            "    var stats = pm.response.json().data;",
+            "    pm.expect(stats.total_nodes).to.be.above(0);",
+            "    pm.expect(stats.total_edges).to.be.above(0);",
+            "    console.log('节点数: ' + stats.total_nodes + ', 关系数: ' + stats.total_edges);",
+            "});"
+          ]
+        },
+        {
+          "name": "10. 新增知识节点(需teacher权限)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{teacher_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"梯度提升树\",\n  \"type\": \"knowledgepoint\",\n  \"course\": \"machine_learning\",\n  \"description\": \"基于梯度提升的集成学习算法\",\n  \"difficulty\": 4,\n  \"parent_id\": \"ch_ml_01\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/graph/nodes"
+          }
+        },
+        {
+          "name": "11. 新增知识关系",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{teacher_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source_id\": \"kp_svm\",\n  \"target_id\": \"kp_logr\",\n  \"relation\": \"相似于\",\n  \"properties\": {\n    \"similarity\": 0.70\n  }\n}"
+            },
+            "url": "{{base_url}}/api/v1/graph/edges"
+          }
+        }
+      ]
+    },
+    {
+      "name": "智能问答",
+      "description": "RAG流式问答、非流式问答、会话管理、反馈",
+      "item": [
+        {
+          "name": "1. 创建会话",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json().data;",
+                  "pm.collectionVariables.set('session_id', data.session_id);",
+                  "console.log('会话ID: ' + data.session_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"机器学习基础讨论\",\n  \"course\": \"machine_learning\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/sessions"
+          }
+        },
+        {
+          "name": "2. 非流式问答 ★核心测试",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('问答成功', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.answer).to.not.be.empty;",
+                  "    pm.expect(data.answer_id).to.not.be.empty;",
+                  "    pm.collectionVariables.set('answer_id', data.answer_id);",
+                  "    console.log('回答ID: ' + data.answer_id);",
+                  "    console.log('响应时间: ' + data.response_time_ms + 'ms');",
+                  "    console.log('回答前100字: ' + data.answer.substring(0, 100));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什么是支持向量机？\",\n  \"course\": \"machine_learning\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "3. 非流式问答(K-Means)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"K-Means聚类算法的原理是什么？\",\n  \"course\": \"machine_learning\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "4. 非流式问答(多轮对话-追问他核函数)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"SVM的核函数有哪些类型？\",\n  \"course\": \"machine_learning\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "5. 非流式问答(数据挖掘课程)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Apriori算法如何计算支持度和置信度？\",\n  \"course\": \"data_mining\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "6. 非流式问答(关闭RAG)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什么是过拟合？如何防止过拟合？\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": false,\n  \"enable_graph\": false,\n  \"top_k\": 0\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "7. 获取对话历史",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/v1/qa/history/{{session_id}}?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "qa", "history", "{{session_id}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "8. 获取会话列表",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/qa/sessions"
+          }
+        },
+        {
+          "name": "9. 获取回答详情",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/qa/answers/{{answer_id}}"
+          },
+          "test": [
+            "pm.test('回答详情正确', function () {",
+            "    var data = pm.response.json().data;",
+            "    pm.expect(data.question).to.include('支持向量机');",
+            "    console.log('引用来源数: ' + (data.references ? data.references.length : 0));",
+            "});"
+          ]
+        },
+        {
+          "name": "10. 提交回答反馈(5星好评)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"is_helpful\": true,\n  \"comment\": \"回答很清晰，帮助理解了SVM的基本原理\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/answers/{{answer_id}}/feedback"
+          }
+        },
+        {
+          "name": "11. 提交回答反馈(3星中评)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 3,\n  \"is_helpful\": false,\n  \"comment\": \"回答不够详细\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/answers/{{answer_id}}/feedback"
+          }
+        },
+        {
+          "name": "12. RAG知识库状态",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/qa/rag/status"
+          },
+          "test": [
+            "pm.test('RAG状态返回', function () {",
+            "    var data = pm.response.json().data;",
+            "    console.log('向量模型: ' + data.embedding_model);",
+            "    console.log('向量维度: ' + data.dimension);",
+            "    console.log('总向量数: ' + data.total_vectors);",
+            "});"
+          ]
+        },
+        {
+          "name": "13. 删除会话",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/qa/sessions/{{session_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "数字教师",
+      "description": "数字教师对话、TTS语音合成、学习进度",
+      "item": [
+        {
+          "name": "1. 数字教师对话(文字)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('教师对话成功', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.answer).to.not.be.empty;",
+                  "    console.log('情绪: ' + data.emotion);",
+                  "    console.log('动作: ' + data.action);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"请讲解一下K-Means聚类算法\",\n  \"enable_voice\": false,\n  \"emotion\": \"auto\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/chat"
+          }
+        },
+        {
+          "name": "2. 数字教师对话(带语音)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('语音生成', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    console.log('语音URL: ' + data.voice_url);",
+                  "    console.log('语音时长: ' + data.duration_ms + 'ms');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"什么是梯度下降法？\",\n  \"enable_voice\": true,\n  \"emotion\": \"encouraging\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/chat"
+          }
+        },
+        {
+          "name": "3. 数字教师对话(SVM讲解)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"支持向量机和逻辑回归有什么区别？\",\n  \"enable_voice\": false,\n  \"emotion\": \"serious\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/chat"
+          }
+        },
+        {
+          "name": "4. 获取数字教师形象",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/teacher/avatar?emotion=happy",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "teacher", "avatar"],
+              "query": [ { "key": "emotion", "value": "happy" } ]
+            }
+          }
+        },
+        {
+          "name": "5. 文字转语音(TTS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('TTS生成', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    if (data.audio_url) {",
+                  "        console.log('音频: ' + data.audio_url);",
+                  "        console.log('引擎: ' + data.engine);",
+                  "        console.log('时长: ' + data.duration_ms + 'ms');",
+                  "    } else {",
+                  "        console.log('TTS服务不可用（IndexTTS2未安装）');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"K-Means是一种经典的聚类算法，它的核心思想是将数据集划分为K个簇。\",\n  \"voice\": \"default\",\n  \"speed\": 1.0\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/tts"
+          }
+        },
+        {
+          "name": "6. TTS(慢速)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"支持向量机通过寻找最大间隔超平面来进行分类。\",\n  \"speed\": 0.8\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/tts"
+          }
+        },
+        {
+          "name": "7. 获取学习进度",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/teacher/progress"
+          },
+          "test": [
+            "pm.test('学习进度返回', function () {",
+            "    var data = pm.response.json().data;",
+            "    console.log('总提问: ' + data.total_questions);",
+            "    console.log('等级: ' + data.level);",
+            "    console.log('已掌握: ' + data.mastered_topics.join(', '));",
+            "    console.log('薄弱: ' + data.weak_topics.join(', '));",
+            "});"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "数据分析(仪表盘)",
+      "description": "仪表盘概览、提问趋势、知识点热度、用户活跃度、满意度",
+      "item": [
+        {
+          "name": "1. 仪表盘概览",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/dashboard/overview"
+          },
+          "test": [
+            "pm.test('仪表盘数据', function () {",
+            "    var data = pm.response.json().data;",
+            "    console.log('总提问: ' + data.kpis.total_questions);",
+            "    console.log('今日提问: ' + data.kpis.today_questions);",
+            "    console.log('总用户: ' + data.kpis.total_users);",
+            "    console.log('热门知识点: ' + data.popular_topics.length);",
+            "});"
+          ]
+        },
+        {
+          "name": "2. 提问趋势分析(近7天)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/question-trend?start_date=2026-06-16&end_date=2026-06-22&granularity=day",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "question-trend"],
+              "query": [
+                { "key": "start_date", "value": "2026-06-16" },
+                { "key": "end_date", "value": "2026-06-22" },
+                { "key": "granularity", "value": "day" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "3. 提问趋势(按课程)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/question-trend?start_date=2026-06-16&end_date=2026-06-22&course=machine_learning",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "question-trend"],
+              "query": [
+                { "key": "start_date", "value": "2026-06-16" },
+                { "key": "end_date", "value": "2026-06-22" },
+                { "key": "course", "value": "machine_learning" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4. 知识点热度",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/dashboard/topic-heatmap"
+          }
+        },
+        {
+          "name": "5. 知识点热度(机器学习)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/topic-heatmap?course=machine_learning",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "topic-heatmap"],
+              "query": [ { "key": "course", "value": "machine_learning" } ]
+            }
+          }
+        },
+        {
+          "name": "6. 用户活跃度",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/dashboard/user-activity?start_date=2026-06-16&end_date=2026-06-22",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "dashboard", "user-activity"],
+              "query": [
+                { "key": "start_date", "value": "2026-06-16" },
+                { "key": "end_date", "value": "2026-06-22" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "7. 满意度分析",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/dashboard/satisfaction"
+          }
+        },
+        {
+          "name": "8. 知识掌握度雷达图",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/dashboard/mastery-radar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "文件管理",
+      "description": "上传知识库文档、向量化、列表、删除、重建索引",
+      "item": [
+        {
+          "name": "1. 上传PDF文档(teacher权限)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json().data;",
+                  "if (data && data.file_id) {",
+                  "    pm.collectionVariables.set('file_id', data.file_id);",
+                  "    console.log('文件ID: ' + data.file_id);",
+                  "    console.log('分块数: ' + data.total_chunks);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teacher_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "./test_data/机器学习教材.pdf" },
+                { "key": "course", "value": "machine_learning", "type": "text" },
+                { "key": "category", "value": "教材", "type": "text" },
+                { "key": "description", "value": "机器学习课程教材", "type": "text" }
+              ]
+            },
+            "url": "{{base_url}}/api/v1/files/upload"
+          },
+          "description": "注意: 需要将本地PDF文件路径替换到src字段"
+        },
+        {
+          "name": "2. 上传TXT文档",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{teacher_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "./test_data/数据挖掘笔记.txt" },
+                { "key": "course", "value": "data_mining", "type": "text" },
+                { "key": "category", "value": "笔记", "type": "text" }
+              ]
+            },
+            "url": "{{base_url}}/api/v1/files/upload"
+          }
+        },
+        {
+          "name": "3. 查询文件处理状态",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/files/{{file_id}}/status"
+          }
+        },
+        {
+          "name": "4. 获取文件列表(全部)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/files?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "5. 获取文件列表(按课程)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/files?course=machine_learning&page=1&page_size=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "files"],
+              "query": [
+                { "key": "course", "value": "machine_learning" },
+                { "key": "page", "value": "1" },
+                { "key": "page_size", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "6. 重建FAISS向量索引(admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/files/rebuild-index"
+          }
+        },
+        {
+          "name": "7. 删除文件(teacher)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{teacher_token}}" }],
+            "url": "{{base_url}}/api/v1/files/{{file_id}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "系统管理",
+      "description": "健康检查、模型状态、配置管理、公告",
+      "item": [
+        {
+          "name": "1. 系统健康检查 ★启动必测",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('系统健康', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    console.log('系统状态: ' + data.status);",
+                  "    for (var svc in data.services) {",
+                  "        console.log('  ' + svc + ': ' + data.services[svc].status);",
+                  "    }",
+                  "    if (data.gpu) {",
+                  "        console.log('GPU: ' + data.gpu.device);",
+                  "        console.log('显存: ' + data.gpu.total_memory_gb + 'GB');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/system/health"
+          }
+        },
+        {
+          "name": "2. 大模型状态",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json().data;",
+                  "console.log('LLM: ' + data.llm.name + ' (' + data.llm.status + ')');",
+                  "console.log('Embedding: ' + data.embedding.name);",
+                  "console.log('FAISS向量: ' + data.faiss.total_vectors);",
+                  "console.log('IndexTTS2: ' + (data.tts.available ? '可用' : '未安装'));",
+                  "console.log('GPU策略: ' + data.gpu.strategy);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/system/model-status"
+          }
+        },
+        {
+          "name": "3. 获取系统配置(admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/v1/system/config"
+          }
+        },
+        {
+          "name": "4. 更新配置-修改RAG TopK(admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config_value\": \"8\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/config?key=rag_top_k",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "config"],
+              "query": [ { "key": "key", "value": "rag_top_k" } ]
+            }
+          }
+        },
+        {
+          "name": "5. 更新配置-修改LLM温度(admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"config_value\": \"0.5\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/system/config?key=ollama_temperature",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "system", "config"],
+              "query": [ { "key": "key", "value": "ollama_temperature" } ]
+            }
+          }
+        },
+        {
+          "name": "6. 获取系统公告",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/system/announcements"
+          },
+          "test": [
+            "pm.test('公告返回', function () {",
+            "    var data = pm.response.json().data;",
+            "    console.log('公告数: ' + data.length);",
+            "    data.forEach(function(a) {",
+            "        console.log('  [' + a.type + '] ' + a.title);",
+            "    });",
+            "});"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "★全链路测试(按顺序执行)",
+      "description": "端到端完整流程: 登录→问答→反馈→教师对话→数据分析",
+      "item": [
+        {
+          "name": "Step1: 登录",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json().data;",
+                  "pm.collectionVariables.set('token', data.token);",
+                  "pm.test('登录成功', function () {",
+                  "    pm.expect(data.token).to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student01\",\n  \"password\": \"Xyz789012\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Step2: 健康检查",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('MySQL正常', function () {",
+                  "    var svc = pm.response.json().data.services;",
+                  "    pm.expect(svc.mysql.status).to.eql('up');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/system/health"
+          }
+        },
+        {
+          "name": "Step3: 查看知识图谱",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('图谱有数据', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.nodes.length).to.be.above(0);",
+                  "    pm.expect(data.edges.length).to.be.above(0);",
+                  "    console.log('节点: ' + data.nodes.length + ', 边: ' + data.edges.length);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/graph/visualization?limit=50"
+          }
+        },
+        {
+          "name": "Step4: 创建会话",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var data = pm.response.json().data;",
+                  "pm.collectionVariables.set('session_id', data.session_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"全链路测试\",\n  \"course\": \"machine_learning\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/sessions"
+          }
+        },
+        {
+          "name": "Step5: RAG问答",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('RAG问答成功', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.answer.length).to.be.above(10);",
+                  "    pm.collectionVariables.set('answer_id', data.answer_id);",
+                  "    console.log('Q: ' + data.question);",
+                  "    console.log('A: ' + data.answer.substring(0, 120) + '...');",
+                  "    console.log('引用: ' + data.references.length + ' 条');",
+                  "    console.log('耗时: ' + data.response_time_ms + 'ms');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"请详细解释决策树ID3算法的信息增益计算过程\",\n  \"session_id\": \"{{session_id}}\",\n  \"enable_rag\": true,\n  \"enable_graph\": true,\n  \"top_k\": 5\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/ask-sync"
+          }
+        },
+        {
+          "name": "Step6: 提交反馈",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"is_helpful\": true,\n  \"comment\": \"全链路测试-回答优秀\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/qa/answers/{{answer_id}}/feedback"
+          }
+        },
+        {
+          "name": "Step7: 数字教师对话+语音",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"总结一下机器学习中的监督学习有哪些算法\",\n  \"enable_voice\": true,\n  \"emotion\": \"auto\"\n}"
+            },
+            "url": "{{base_url}}/api/v1/teacher/chat"
+          }
+        },
+        {
+          "name": "Step8: 查看仪表盘",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('仪表盘完整', function () {",
+                  "    var data = pm.response.json().data;",
+                  "    pm.expect(data.kpis).to.exist;",
+                  "    pm.expect(data.question_trend).to.exist;",
+                  "    pm.expect(data.popular_topics).to.exist;",
+                  "    console.log('=== 全链路测试完成 ===');",
+                  "    console.log('总提问: ' + data.kpis.total_questions);",
+                  "    console.log('满意度: ' + data.kpis.avg_satisfaction);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/dashboard/overview"
+          }
+        }
+      ]
+    }
+  ]
+}
