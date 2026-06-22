@@ -1,17 +1,28 @@
 <template>
   <div class="teacher-layout">
-    <!-- 左侧：教师形象卡 -->
-    <aside class="teacher-card">
-      <!-- 顶部渐变背景区域 -->
-      <div class="teacher-hero">
-        <div class="hero-pattern" />
-        <div class="avatar-wrapper">
-          <div class="avatar-ring">
-            <div class="avatar-circle">
-              <span class="avatar-emoji">👩‍🏫</span>
-            </div>
+    <!-- 左侧：数字人形象区 -->
+    <aside class="avatar-panel">
+      <!-- 背景 -->
+      <div class="avatar-bg" />
+
+      <!-- 数字人形象 -->
+      <div class="avatar-stage" :class="{ speaking: isSpeaking }">
+        <div class="avatar-frame">
+          <img src="@/assets/fairy-teacher.jpg" alt="数字教师" class="avatar-img" />
+          <!-- 语音波纹 -->
+          <div v-if="isSpeaking" class="voice-ripple">
+            <span /><span /><span />
           </div>
+          <!-- 底部呼吸光晕 -->
           <div class="avatar-glow" />
+        </div>
+
+        <!-- 说话状态指示器 -->
+        <div class="speaking-indicator" v-if="isSpeaking">
+          <div class="wave-bars">
+            <span v-for="n in 7" :key="n" :style="{ animationDelay: (n * 0.12) + 's' }" />
+          </div>
+          <span class="speaking-text">正在说话...</span>
         </div>
       </div>
 
@@ -24,65 +35,56 @@
         </div>
       </div>
 
-      <!-- 情绪选择器 -->
-      <div class="emotion-section">
-        <div class="section-label">教学风格</div>
-        <div class="emotion-bar">
-          <button
-            v-for="e in info.emotions" :key="e"
-            class="emotion-btn" :class="{ active: curEmotion === e }"
-            @click="curEmotion = e"
-          >
-            <span class="emotion-icon">{{ emotionIcons[e] }}</span>
-            <span class="emotion-text">{{ emotionMap[e] }}</span>
-          </button>
-        </div>
+      <!-- 控制面板 -->
+      <div class="control-bar">
+        <!-- 语音开关 -->
+        <button
+          class="ctrl-btn"
+          :class="{ active: voiceEnabled }"
+          @click="toggleVoice"
+          :title="voiceEnabled ? '语音已开启' : '语音已关闭'"
+        >
+          <svg v-if="voiceEnabled" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+          </svg>
+          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+          <span>{{ voiceEnabled ? '语音开' : '语音关' }}</span>
+        </button>
+
+        <!-- 情绪切换 -->
+        <button
+          v-for="e in info.emotions" :key="e"
+          class="ctrl-btn emotion-ctrl"
+          :class="{ active: curEmotion === e }"
+          @click="curEmotion = e"
+          :title="emotionMap[e]"
+        >
+          <span>{{ emotionIcons[e] }}</span>
+        </button>
       </div>
 
-      <!-- 学习进度卡 -->
+      <!-- 学习进度 -->
       <div class="progress-card">
-        <div class="progress-header">
-          <span class="progress-icon">📊</span>
-          <span class="progress-title">学习进度</span>
-        </div>
-
         <div class="stat-row">
           <div class="stat-item">
             <div class="stat-value">{{ info.progress.total_questions }}</div>
-            <div class="stat-label">总提问</div>
+            <div class="stat-label">提问</div>
           </div>
           <div class="stat-divider" />
           <div class="stat-item">
             <div class="stat-value">{{ info.progress.study_hours }}<span class="stat-unit">h</span></div>
-            <div class="stat-label">学习时长</div>
+            <div class="stat-label">学时</div>
           </div>
           <div class="stat-divider" />
           <div class="stat-item">
             <div class="stat-value">{{ info.progress.level }}</div>
-            <div class="stat-label">当前等级</div>
-          </div>
-        </div>
-
-        <div class="topics-section">
-          <div class="topics-group">
-            <div class="topics-label">
-              <span class="label-dot mastered" />
-              已掌握
-            </div>
-            <div class="topics-tags">
-              <span v-for="t in info.progress.mastered_topics" :key="t" class="topic-tag mastered">{{ t }}</span>
-              <span v-if="!info.progress.mastered_topics.length" class="topics-empty">暂无</span>
-            </div>
-          </div>
-          <div class="topics-group">
-            <div class="topics-label">
-              <span class="label-dot weak" />
-              待加强
-            </div>
-            <div class="topics-tags">
-              <span v-for="t in info.progress.weak_topics" :key="t" class="topic-tag weak">{{ t }}</span>
-              <span v-if="!info.progress.weak_topics.length" class="topics-empty">暂无</span>
-            </div>
+            <div class="stat-label">等级</div>
           </div>
         </div>
       </div>
@@ -92,10 +94,12 @@
     <section class="chat-card">
       <div class="chat-head">
         <div class="chat-head-left">
-          <div class="chat-head-avatar">师</div>
+          <div class="chat-head-avatar">
+            <img src="@/assets/fairy-teacher.jpg" alt="" class="mini-avatar" />
+          </div>
           <div>
             <div class="chat-head-name">与{{ info.name }}对话</div>
-            <div class="chat-head-sub">智能辅导 · 随时提问</div>
+            <div class="chat-head-sub">{{ isSpeaking ? '🔊 语音播报中' : '💬 智能辅导 · 随时提问' }}</div>
           </div>
         </div>
         <div class="chat-head-badge">
@@ -105,26 +109,55 @@
       </div>
 
       <div ref="chatBox" class="chat-body">
-        <!-- 空状态 -->
         <div v-if="chatMsgs.length === 0" class="chat-empty">
-          <div class="empty-icon">👋</div>
-          <div class="empty-title">向{{ info.name }}提问吧！</div>
-          <div class="empty-hint">任何学习上的问题都可以问我</div>
+          <div class="empty-icon">🌸</div>
+          <div class="empty-title">你好，我是{{ info.name }}</div>
+          <div class="empty-hint">点击下面的快捷问题，或直接输入你的问题</div>
+          <div class="quick-questions">
+            <button
+              v-for="(q, i) in quickQuestions" :key="i"
+              class="quick-btn"
+              @click="askQuick(q)"
+            >{{ q }}</button>
+          </div>
         </div>
 
-        <!-- 消息列表 -->
         <div v-for="(m, i) in chatMsgs" :key="i" class="msg-row" :class="m.role">
           <div class="msg-avatar" :class="m.role === 'user' ? 'human' : 'ai'">
-            {{ m.role === 'user' ? '我' : '师' }}
+            <template v-if="m.role === 'ai'">
+              <img src="@/assets/fairy-teacher.jpg" alt="" class="avatar-tiny" />
+            </template>
+            <template v-else>我</template>
           </div>
           <div class="msg-content">
             <div class="msg-bubble" v-html="renderMd(m.content)" />
+            <!-- AI 消息的操作按钮 -->
+            <div v-if="m.role === 'assistant' && voiceEnabled" class="msg-actions">
+              <button
+                class="action-btn"
+                @click="speakText(m.content)"
+                title="朗读此消息"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                朗读
+              </button>
+              <button
+                v-if="isSpeaking"
+                class="action-btn stop"
+                @click="stopSpeaking"
+                title="停止朗读"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                停止
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- 加载中 -->
         <div v-if="chatLoading" class="msg-row assistant">
-          <div class="msg-avatar ai">师</div>
+          <div class="msg-avatar ai">
+            <img src="@/assets/fairy-teacher.jpg" alt="" class="avatar-tiny" />
+          </div>
           <div class="msg-content">
             <div class="msg-bubble">
               <div class="typing-dots"><span /><span /><span /></div>
@@ -138,7 +171,7 @@
         <div class="input-wrapper">
           <el-input
             v-model="chatInput"
-            placeholder="向老师提问，例如：这个知识点怎么理解？"
+            placeholder="向老师提问..."
             @keydown.enter="sendChat"
           />
         </div>
@@ -151,13 +184,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
 import api from '@/api'
 
 const chatBox = ref(null)
 const info = ref({
-  name: '小智老师', status: 'online', emotions: [],
+  name: '花仙老师', status: 'online', emotions: ['normal', 'happy', 'thinking', 'encouraging'],
   progress: { total_questions: 0, mastered_topics: [], weak_topics: [], study_hours: 0, level: '' },
 })
 const curEmotion = ref('normal')
@@ -167,9 +200,27 @@ const chatMsgs = ref([])
 const chatInput = ref('')
 const chatLoading = ref(false)
 
+// 语音相关
+const voiceEnabled = ref(true)
+const isSpeaking = ref(false)
+let currentUtterance = null
+
+const quickQuestions = [
+  '什么是支持向量机？',
+  '解释一下 Transformer',
+  'K-Means 算法原理',
+  '过拟合怎么解决？',
+]
+
 onMounted(async () => {
   const { data } = await api.get('/teacher/avatar')
   info.value = data
+  info.value.name = '花仙老师'
+  info.value.emotions = ['normal', 'happy', 'thinking', 'encouraging']
+})
+
+onUnmounted(() => {
+  stopSpeaking()
 })
 
 function renderMd(t) { if (!t) return ''; try { return marked.parse(t) } catch { return t } }
@@ -178,6 +229,65 @@ function scrollBottom() {
   nextTick(() => { if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight })
 }
 
+/* ========== 语音合成 ========== */
+function getChineseVoice() {
+  const voices = window.speechSynthesis?.getVoices() || []
+  // 优先选中文女声
+  return voices.find(v => v.lang.includes('zh') && v.name.includes('Female'))
+    || voices.find(v => v.lang.includes('zh-CN'))
+    || voices.find(v => v.lang.includes('zh'))
+    || voices.find(v => v.lang.includes('cmn'))
+    || null
+}
+
+function speakText(text) {
+  if (!window.speechSynthesis || !voiceEnabled.value) return
+  stopSpeaking()
+
+  // 清除 Markdown 标记，提取纯文本
+  const plainText = text
+    .replace(/#{1,6}\s/g, '')
+    .replace(/\*{1,2}(.*?)\*{1,2}/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\|.*?\|/g, '')
+    .replace(/[-*]\s/g, '')
+    .replace(/\n{2,}/g, '。')
+    .replace(/\n/g, '，')
+    .trim()
+
+  if (!plainText) return
+
+  const utterance = new SpeechSynthesisUtterance(plainText)
+  const voice = getChineseVoice()
+  if (voice) utterance.voice = voice
+  utterance.lang = 'zh-CN'
+  utterance.rate = 0.95
+  utterance.pitch = 1.1
+  utterance.volume = 1
+
+  utterance.onstart = () => { isSpeaking.value = true }
+  utterance.onend = () => { isSpeaking.value = false }
+  utterance.onerror = () => { isSpeaking.value = false }
+
+  currentUtterance = utterance
+  window.speechSynthesis.speak(utterance)
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel()
+  }
+  isSpeaking.value = false
+  currentUtterance = null
+}
+
+function toggleVoice() {
+  voiceEnabled.value = !voiceEnabled.value
+  if (!voiceEnabled.value) stopSpeaking()
+}
+
+/* ========== 聊天逻辑 ========== */
 async function sendChat() {
   const q = chatInput.value.trim()
   if (!q || chatLoading.value) return
@@ -188,11 +298,20 @@ async function sendChat() {
   try {
     const { data } = await api.post('/teacher/chat', { question: q })
     chatMsgs.value.push({ role: 'assistant', content: data.answer })
+    // 自动朗读
+    if (voiceEnabled.value) {
+      nextTick(() => speakText(data.answer))
+    }
   } catch {
     chatMsgs.value.push({ role: 'assistant', content: '老师暂时不在线，请稍后再试。' })
   }
   chatLoading.value = false
   scrollBottom()
+}
+
+function askQuick(q) {
+  chatInput.value = q
+  sendChat()
 }
 </script>
 
@@ -200,147 +319,222 @@ async function sendChat() {
 /* ===== 布局 ===== */
 .teacher-layout {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 380px 1fr;
   gap: 20px;
   height: calc(100vh - 120px);
 }
 
-/* ===== 教师卡 ===== */
-.teacher-card {
+/* ===== 数字人形象面板 ===== */
+.avatar-panel {
   background: var(--bg-card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  align-items: center;
+  padding: 0 20px 20px;
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(0,0,0,0.03);
 }
 
-/* Hero 渐变背景 */
-.teacher-hero {
-  position: relative;
-  height: 180px;
-  background: var(--gradient);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.hero-pattern {
+.avatar-bg {
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%);
-}
-
-/* 头像容器 */
-.avatar-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.avatar-ring {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-  border: 3px solid rgba(255,255,255,0.3);
-}
-.avatar-circle {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: var(--bg-card);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-}
-.avatar-emoji {
-  font-size: 64px;
-  line-height: 1;
-}
-.avatar-glow {
-  position: absolute;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-  animation: glow-pulse 3s ease-in-out infinite;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(244,114,182,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 30% 80%, rgba(139,92,246,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.06) 0%, transparent 50%);
   pointer-events: none;
 }
 
+/* 数字人舞台 */
+.avatar-stage {
+  position: relative;
+  margin-top: 24px;
+  margin-bottom: 16px;
+  z-index: 1;
+}
+
+.avatar-frame {
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    0 0 0 4px rgba(244,114,182,0.2),
+    0 0 0 8px rgba(139,92,246,0.1),
+    0 20px 60px rgba(0,0,0,0.12);
+  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
+  animation: idle-breathe 4s ease-in-out infinite;
+}
+
+/* 空闲呼吸动画 */
+@keyframes idle-breathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.02) translateY(-3px); }
+}
+
+/* 说话时增强动画 */
+.avatar-stage.speaking .avatar-frame {
+  box-shadow:
+    0 0 0 4px rgba(244,114,182,0.35),
+    0 0 0 10px rgba(139,92,246,0.15),
+    0 0 40px rgba(244,114,182,0.2),
+    0 20px 60px rgba(0,0,0,0.12);
+  animation: speaking-move 2.5s ease-in-out infinite;
+}
+
+.avatar-stage.speaking .avatar-img {
+  animation: speaking-face 1.8s ease-in-out infinite;
+}
+
+@keyframes speaking-move {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.03) rotate(-1.5deg); }
+  50% { transform: scale(1.05) rotate(0deg); }
+  75% { transform: scale(1.03) rotate(1.5deg); }
+}
+
+@keyframes speaking-face {
+  0%, 100% { transform: scale(1) translateY(0); }
+  30% { transform: scale(1.01) translateY(-2px); }
+  60% { transform: scale(1.03) translateY(-4px); }
+}
+
+/* 语音波纹 */
+.voice-ripple {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.voice-ripple span {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(244,114,182,0.3);
+  animation: ripple-out 2s ease-out infinite;
+}
+.voice-ripple span:nth-child(2) { animation-delay: 0.5s; }
+.voice-ripple span:nth-child(3) { animation-delay: 1s; }
+
+@keyframes ripple-out {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* 底部光晕 */
+.avatar-glow {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 40px;
+  background: radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.1); }
+  0%, 100% { opacity: 0.5; transform: translateX(-50%) scaleX(1); }
+  50% { opacity: 1; transform: translateX(-50%) scaleX(1.15); }
+}
+
+/* 说话指示器 */
+.speaking-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, rgba(244,114,182,0.1), rgba(139,92,246,0.1));
+  border-radius: 20px;
+  border: 1px solid rgba(244,114,182,0.2);
+}
+
+.wave-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+.wave-bars span {
+  width: 3px;
+  height: 6px;
+  background: linear-gradient(to top, #f472b6, #8b5cf6);
+  border-radius: 2px;
+  animation: wave-bar 0.8s ease-in-out infinite alternate;
+}
+.wave-bars span:nth-child(odd) { animation-direction: alternate-reverse; }
+
+@keyframes wave-bar {
+  0% { height: 4px; }
+  100% { height: 18px; }
+}
+
+.speaking-text {
+  font-size: 13px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* 教师信息 */
 .teacher-info {
   text-align: center;
-  padding: 20px 24px 0;
+  position: relative;
+  z-index: 1;
 }
 .teacher-name {
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
-  letter-spacing: -0.3px;
 }
 .teacher-status {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #94a3b8;
-  flex-shrink: 0;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #94a3b8; flex-shrink: 0;
 }
 .status-dot.online {
   background: #22c55e;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
   animation: status-pulse 2s ease-in-out infinite;
 }
 @keyframes status-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-  50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
 }
-.status-text {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
+.status-text { font-size: 13px; color: var(--text-secondary); }
 
-/* 情绪选择区 */
-.emotion-section {
-  padding: 20px 24px 0;
-}
-.section-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 12px;
-}
-.emotion-bar {
+/* 控制栏 */
+.control-bar {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
 }
-.emotion-btn {
+.ctrl-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -350,151 +544,50 @@ async function sendChat() {
   background: var(--bg-card);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  transition: all 0.25s;
 }
-.emotion-btn:hover {
+.ctrl-btn:hover {
   border-color: var(--primary-light);
   color: var(--primary);
   background: var(--primary-bg);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 110, 247, 0.15);
 }
-.emotion-btn.active {
+.ctrl-btn.active {
   background: var(--gradient);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 4px 14px rgba(79, 110, 247, 0.3);
+  box-shadow: 0 4px 14px rgba(79,110,247,0.25);
 }
-.emotion-btn.active:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(79, 110, 247, 0.4);
-}
-.emotion-icon {
-  font-size: 15px;
-}
-.emotion-text {
-  font-size: 13px;
+.emotion-ctrl {
+  padding: 8px 12px;
+  font-size: 18px;
 }
 
-/* 学习进度卡 */
+/* 进度卡 */
 .progress-card {
-  margin: 20px 16px 16px;
-  padding: 20px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 16px;
   background: var(--bg);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
 }
-.progress-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.progress-icon {
-  font-size: 18px;
-}
-.progress-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-/* 统计行 */
 .stat-row {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 16px 0;
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  margin-bottom: 16px;
 }
-.stat-item {
-  flex: 1;
-  text-align: center;
-}
+.stat-item { flex: 1; text-align: center; }
 .stat-value {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--primary);
-  letter-spacing: -0.5px;
-  line-height: 1.2;
+  font-size: 22px; font-weight: 800; color: var(--primary);
 }
-.stat-unit {
-  font-size: 14px;
-  font-weight: 600;
-}
-.stat-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
-  font-weight: 500;
-}
-.stat-divider {
-  width: 1px;
-  height: 32px;
-  background: var(--border);
-}
-
-/* 主题标签区 */
-.topics-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.topics-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.topics-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.label-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.label-dot.mastered {
-  background: var(--accent-green);
-}
-.label-dot.weak {
-  background: var(--accent-orange);
-}
-.topics-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.topic-tag {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-.topic-tag.mastered {
-  background: #ecfdf5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
-}
-.topic-tag.weak {
-  background: #fffbeb;
-  color: #d97706;
-  border: 1px solid #fde68a;
-}
-.topics-empty {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-style: italic;
-}
+.stat-unit { font-size: 13px; font-weight: 600; }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.stat-divider { width: 1px; height: 28px; background: var(--border); }
 
 /* ===== 对话卡 ===== */
 .chat-card {
@@ -507,7 +600,6 @@ async function sendChat() {
   border: 1px solid rgba(0,0,0,0.03);
 }
 
-/* 对话头部 */
 .chat-head {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
@@ -516,105 +608,91 @@ async function sendChat() {
   justify-content: space-between;
   background: linear-gradient(to bottom, #fafbff, var(--bg-card));
 }
-.chat-head-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.chat-head-left { display: flex; align-items: center; gap: 12px; }
 .chat-head-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--gradient);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(79, 110, 247, 0.25);
+  width: 42px; height: 42px; border-radius: 50%; overflow: hidden;
+  box-shadow: 0 4px 12px rgba(79,110,247,0.2);
+  border: 2px solid rgba(244,114,182,0.3);
 }
-.chat-head-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.chat-head-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
+.mini-avatar { width: 100%; height: 100%; object-fit: cover; }
+.chat-head-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.chat-head-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .chat-head-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: var(--primary-bg);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--primary);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; background: var(--primary-bg);
+  border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--primary);
 }
 .badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: var(--primary);
   animation: badge-blink 2s infinite;
 }
-@keyframes badge-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+@keyframes badge-blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
 /* 对话主体 */
-.chat-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
+.chat-body { flex: 1; overflow-y: auto; padding: 24px; }
+
+.chat-empty { text-align: center; padding: 50px 20px; }
+.empty-icon { font-size: 56px; margin-bottom: 12px; }
+.empty-title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.empty-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+/* 快捷问题 */
+.quick-questions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  justify-content: center; max-width: 400px; margin: 0 auto;
+}
+.quick-btn {
+  padding: 8px 16px; border-radius: 20px;
+  border: 1.5px solid var(--border); background: var(--bg-card);
+  cursor: pointer; font-size: 13px; color: var(--text-secondary);
+  transition: all 0.2s; font-weight: 500;
+}
+.quick-btn:hover {
+  border-color: var(--primary); color: var(--primary);
+  background: var(--primary-bg); transform: translateY(-1px);
 }
 
-/* 空状态 */
-.chat-empty {
-  text-align: center;
-  padding: 60px 20px;
-}
-.empty-icon {
-  font-size: 56px;
-  margin-bottom: 16px;
-}
-.empty-title {
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-.empty-hint {
-  font-size: 13px;
-  color: var(--text-muted);
+/* 消息 */
+.msg-content { flex: 1; min-width: 0; }
+
+/* 消息头像 */
+.avatar-tiny {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
 }
 
-/* 消息内容区 */
-.msg-content {
-  flex: 1;
-  min-width: 0;
+/* 消息操作按钮 */
+.msg-actions {
+  display: flex; gap: 8px; margin-top: 8px;
+}
+.action-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  cursor: pointer; font-size: 12px; color: var(--text-muted);
+  transition: all 0.2s;
+}
+.action-btn:hover {
+  border-color: var(--primary); color: var(--primary);
+  background: var(--primary-bg);
+}
+.action-btn.stop {
+  border-color: var(--accent-red); color: var(--accent-red);
+}
+.action-btn.stop:hover {
+  background: #fef2f2;
 }
 
 /* 输入区 */
 .chat-input-bar {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  display: flex; gap: 12px; align-items: center;
   background: linear-gradient(to top, #fafbff, var(--bg-card));
 }
-.input-wrapper {
-  flex: 1;
-}
+.input-wrapper { flex: 1; }
 .input-wrapper :deep(.el-input__wrapper) {
-  border-radius: 24px;
-  padding: 4px 18px;
+  border-radius: 24px; padding: 4px 18px;
   box-shadow: 0 0 0 1px var(--border) inset;
   transition: all 0.25s;
 }
@@ -623,73 +701,26 @@ async function sendChat() {
   box-shadow: 0 0 0 2px var(--primary-light) inset;
 }
 .btn-send {
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 22px;
-  background: var(--gradient) !important;
-  border: none !important;
-  color: #fff;
-  font-weight: 600;
-  font-size: 14px;
-  flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(79, 110, 247, 0.3);
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+  height: 44px; padding: 0 24px; border-radius: 22px;
+  background: var(--gradient) !important; border: none !important;
+  color: #fff; font-weight: 600; font-size: 14px; flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(79,110,247,0.3);
+  transition: all 0.25s;
 }
 .btn-send:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79, 110, 247, 0.4);
-}
-.btn-send:active {
-  transform: translateY(0);
+  box-shadow: 0 6px 20px rgba(79,110,247,0.4);
 }
 
 /* ===== 响应式 ===== */
 @media (max-width: 1100px) {
-  .teacher-layout {
-    grid-template-columns: 1fr;
-    height: auto;
-    min-height: calc(100vh - 120px);
-  }
-  .teacher-card {
-    max-height: none;
-  }
-  .chat-card {
-    height: 500px;
-  }
+  .teacher-layout { grid-template-columns: 1fr; height: auto; }
+  .avatar-panel { max-height: none; }
+  .chat-card { height: 500px; }
 }
 @media (max-width: 600px) {
-  .teacher-layout {
-    gap: 12px;
-  }
-  .teacher-hero {
-    height: 140px;
-  }
-  .avatar-ring {
-    width: 100px;
-    height: 100px;
-  }
-  .avatar-circle {
-    width: 84px;
-    height: 84px;
-  }
-  .avatar-emoji {
-    font-size: 44px;
-  }
-  .emotion-bar {
-    gap: 6px;
-  }
-  .emotion-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  .stat-value {
-    font-size: 20px;
-  }
-  .chat-card {
-    height: 400px;
-  }
-  .chat-head-badge {
-    display: none;
-  }
+  .avatar-frame { width: 180px; height: 180px; }
+  .quick-questions { flex-direction: column; }
+  .chat-head-badge { display: none; }
 }
 </style>
