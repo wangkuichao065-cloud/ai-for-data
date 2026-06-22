@@ -1,29 +1,28 @@
 <template>
   <div class="teacher-layout">
-    <!-- 左侧：数字人形象区 -->
-    <aside class="avatar-panel">
-      <!-- 背景 -->
-      <div class="avatar-bg" />
-
-      <!-- 数字人形象 -->
-      <div class="avatar-stage" :class="{ speaking: isSpeaking }">
-        <div class="avatar-frame">
-          <img src="@/assets/fairy-teacher.jpg" alt="数字教师" class="avatar-img" />
-          <!-- 语音波纹 -->
-          <div v-if="isSpeaking" class="voice-ripple">
-            <span /><span /><span />
-          </div>
-          <!-- 底部呼吸光晕 -->
-          <div class="avatar-glow" />
+    <!-- 左侧：Live2D 数字人面板 -->
+    <aside class="live2d-panel">
+      <!-- Live2D Canvas -->
+      <div class="live2d-stage" ref="stageEl">
+        <canvas ref="liveCanvas" class="live2d-canvas" />
+        <!-- 加载状态 -->
+        <div v-if="modelLoading" class="loading-overlay">
+          <div class="loading-spinner" />
+          <span>加载模型中...</span>
         </div>
-
-        <!-- 说话状态指示器 -->
-        <div class="speaking-indicator" v-if="isSpeaking">
-          <div class="wave-bars">
-            <span v-for="n in 7" :key="n" :style="{ animationDelay: (n * 0.12) + 's' }" />
-          </div>
-          <span class="speaking-text">正在说话...</span>
+        <!-- 加载失败 -->
+        <div v-if="modelError" class="loading-overlay error">
+          <span class="error-icon">⚠️</span>
+          <span>模型加载失败</span>
+          <button class="retry-btn" @click="loadModel">重试</button>
         </div>
+        <!-- 对话气泡 -->
+        <transition name="bubble">
+          <div v-if="bubbleText" class="speech-bubble">
+            <div class="bubble-content">{{ bubbleText }}</div>
+            <div class="bubble-arrow" />
+          </div>
+        </transition>
       </div>
 
       <!-- 教师信息 -->
@@ -32,40 +31,32 @@
         <div class="teacher-status">
           <span class="status-dot" :class="{ online: info.status === 'online' }" />
           <span class="status-text">{{ info.status === 'online' ? '在线' : '离线' }}</span>
+          <span v-if="isSpeaking" class="speaking-tag">🔊 说话中</span>
         </div>
       </div>
 
       <!-- 控制面板 -->
       <div class="control-bar">
-        <!-- 语音开关 -->
-        <button
-          class="ctrl-btn"
-          :class="{ active: voiceEnabled }"
-          @click="toggleVoice"
-          :title="voiceEnabled ? '语音已开启' : '语音已关闭'"
-        >
-          <svg v-if="voiceEnabled" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="ctrl-btn" :class="{ active: voiceEnabled }" @click="toggleVoice">
+          <svg v-if="voiceEnabled" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
             <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
             <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
           </svg>
-          <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-            <line x1="23" y1="9" x2="17" y2="15" />
-            <line x1="17" y1="9" x2="23" y2="15" />
+            <line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />
           </svg>
           <span>{{ voiceEnabled ? '语音开' : '语音关' }}</span>
         </button>
-
-        <!-- 情绪切换 -->
-        <button
-          v-for="e in info.emotions" :key="e"
-          class="ctrl-btn emotion-ctrl"
-          :class="{ active: curEmotion === e }"
-          @click="curEmotion = e"
-          :title="emotionMap[e]"
-        >
-          <span>{{ emotionIcons[e] }}</span>
+        <button class="ctrl-btn" @click="triggerMotion" title="触发动作">
+          <span>🎭</span><span>动作</span>
+        </button>
+        <button class="ctrl-btn" @click="switchModel" title="切换形象">
+          <span>👗</span><span>换装</span>
+        </button>
+        <button v-if="isSpeaking" class="ctrl-btn stop-btn" @click="stopSpeaking">
+          <span>⏹</span><span>停止</span>
         </button>
       </div>
 
@@ -94,12 +85,10 @@
     <section class="chat-card">
       <div class="chat-head">
         <div class="chat-head-left">
-          <div class="chat-head-avatar">
-            <img src="@/assets/fairy-teacher.jpg" alt="" class="mini-avatar" />
-          </div>
+          <div class="chat-head-avatar">🎓</div>
           <div>
             <div class="chat-head-name">与{{ info.name }}对话</div>
-            <div class="chat-head-sub">{{ isSpeaking ? '🔊 语音播报中' : '💬 智能辅导 · 随时提问' }}</div>
+            <div class="chat-head-sub">{{ isSpeaking ? '🔊 语音播报中...' : '💬 智能辅导 · 随时提问' }}</div>
           </div>
         </div>
         <div class="chat-head-badge">
@@ -112,52 +101,29 @@
         <div v-if="chatMsgs.length === 0" class="chat-empty">
           <div class="empty-icon">🌸</div>
           <div class="empty-title">你好，我是{{ info.name }}</div>
-          <div class="empty-hint">点击下面的快捷问题，或直接输入你的问题</div>
+          <div class="empty-hint">点击快捷问题，或直接输入你的问题</div>
           <div class="quick-questions">
-            <button
-              v-for="(q, i) in quickQuestions" :key="i"
-              class="quick-btn"
-              @click="askQuick(q)"
-            >{{ q }}</button>
+            <button v-for="(q, i) in quickQuestions" :key="i" class="quick-btn" @click="askQuick(q)">{{ q }}</button>
           </div>
         </div>
 
         <div v-for="(m, i) in chatMsgs" :key="i" class="msg-row" :class="m.role">
           <div class="msg-avatar" :class="m.role === 'user' ? 'human' : 'ai'">
-            <template v-if="m.role === 'ai'">
-              <img src="@/assets/fairy-teacher.jpg" alt="" class="avatar-tiny" />
-            </template>
-            <template v-else>我</template>
+            {{ m.role === 'user' ? '我' : '师' }}
           </div>
           <div class="msg-content">
             <div class="msg-bubble" v-html="renderMd(m.content)" />
-            <!-- AI 消息的操作按钮 -->
             <div v-if="m.role === 'assistant' && voiceEnabled" class="msg-actions">
-              <button
-                class="action-btn"
-                @click="speakText(m.content)"
-                title="朗读此消息"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              <button class="action-btn" @click="speakText(m.content)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
                 朗读
-              </button>
-              <button
-                v-if="isSpeaking"
-                class="action-btn stop"
-                @click="stopSpeaking"
-                title="停止朗读"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                停止
               </button>
             </div>
           </div>
         </div>
 
         <div v-if="chatLoading" class="msg-row assistant">
-          <div class="msg-avatar ai">
-            <img src="@/assets/fairy-teacher.jpg" alt="" class="avatar-tiny" />
-          </div>
+          <div class="msg-avatar ai">师</div>
           <div class="msg-content">
             <div class="msg-bubble">
               <div class="typing-dots"><span /><span /><span /></div>
@@ -166,18 +132,11 @@
         </div>
       </div>
 
-      <!-- 输入区 -->
       <div class="chat-input-bar">
         <div class="input-wrapper">
-          <el-input
-            v-model="chatInput"
-            placeholder="向老师提问..."
-            @keydown.enter="sendChat"
-          />
+          <el-input v-model="chatInput" placeholder="向老师提问..." @keydown.enter="sendChat" />
         </div>
-        <el-button class="btn-send" :loading="chatLoading" @click="sendChat">
-          发送
-        </el-button>
+        <el-button class="btn-send" :loading="chatLoading" @click="sendChat">发送</el-button>
       </div>
     </section>
   </div>
@@ -186,24 +145,45 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { marked } from 'marked'
+import * as PIXI from 'pixi.js'
+import { Live2DModel } from 'pixi-live2d-display/cubism4'
 import api from '@/api'
 
-const chatBox = ref(null)
+/* ========== Live2D ========== */
+const stageEl = ref(null)
+const liveCanvas = ref(null)
+const modelLoading = ref(true)
+const modelError = ref(false)
+let pixiApp = null
+let live2dModel = null
+let lipSyncTimer = null
+
+const modelList = [
+  {
+    name: 'Haru',
+    url: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json',
+  },
+  {
+    name: 'Shizuku',
+    url: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json',
+    cubism2: true,
+  },
+]
+let currentModelIndex = 0
+
+/* ========== 数据 ========== */
 const info = ref({
-  name: '花仙老师', status: 'online', emotions: ['normal', 'happy', 'thinking', 'encouraging'],
+  name: '花仙老师', status: 'online', emotions: [],
   progress: { total_questions: 0, mastered_topics: [], weak_topics: [], study_hours: 0, level: '' },
 })
-const curEmotion = ref('normal')
-const emotionMap = { normal: '平静', happy: '开心', thinking: '思考', encouraging: '鼓励' }
-const emotionIcons = { normal: '😌', happy: '😊', thinking: '🤔', encouraging: '💪' }
 const chatMsgs = ref([])
 const chatInput = ref('')
 const chatLoading = ref(false)
-
-// 语音相关
+const chatBox = ref(null)
 const voiceEnabled = ref(true)
 const isSpeaking = ref(false)
-let currentUtterance = null
+const bubbleText = ref('')
+let bubbleTimer = null
 
 const quickQuestions = [
   '什么是支持向量机？',
@@ -212,27 +192,121 @@ const quickQuestions = [
   '过拟合怎么解决？',
 ]
 
-onMounted(async () => {
-  const { data } = await api.get('/teacher/avatar')
-  info.value = data
-  info.value.name = '花仙老师'
-  info.value.emotions = ['normal', 'happy', 'thinking', 'encouraging']
-})
+/* ========== 挂载 Live2D ========== */
+async function loadModel() {
+  modelLoading.value = true
+  modelError.value = false
 
-onUnmounted(() => {
-  stopSpeaking()
-})
+  try {
+    window.PIXI = PIXI
 
-function renderMd(t) { if (!t) return ''; try { return marked.parse(t) } catch { return t } }
+    if (!pixiApp) {
+      const container = stageEl.value
+      const w = container.clientWidth || 380
+      const h = container.clientHeight || 420
 
-function scrollBottom() {
-  nextTick(() => { if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight })
+      pixiApp = new PIXI.Application({
+        view: liveCanvas.value,
+        width: w,
+        height: h,
+        backgroundAlpha: 0,
+        autoStart: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      })
+    } else {
+      pixiApp.stage.removeChildren()
+    }
+
+    const modelDef = modelList[currentModelIndex]
+
+    live2dModel = await Live2DModel.from(modelDef.url, {
+      autoInteract: true,
+    })
+
+    // 计算缩放
+    const canvasW = pixiApp.screen.width
+    const canvasH = pixiApp.screen.height
+    const modelW = live2dModel.width
+    const modelH = live2dModel.height
+    const scale = Math.min(canvasW / modelW, canvasH / modelH) * 0.85
+    live2dModel.scale.set(scale)
+
+    // 居中
+    live2dModel.x = (canvasW - live2dModel.width * scale) / 2
+    live2dModel.y = canvasH - live2dModel.height * scale + 10
+
+    pixiApp.stage.addChild(live2dModel)
+
+    // 鼠标追踪（眼睛跟随）
+    stageEl.value.addEventListener('pointermove', (e) => {
+      if (!live2dModel) return
+      const rect = stageEl.value.getBoundingClientRect()
+      live2dModel.focus(e.clientX - rect.left, e.clientY - rect.top)
+    })
+
+    // 点击交互
+    stageEl.value.addEventListener('pointerdown', (e) => {
+      if (!live2dModel) return
+      const rect = stageEl.value.getBoundingClientRect()
+      live2dModel.tap(e.clientX - rect.left, e.clientY - rect.top)
+    })
+
+    // hit 事件
+    live2dModel.on('hit', (hitAreas) => {
+      if (hitAreas.includes('body') || hitAreas.includes('Body')) {
+        triggerMotion()
+        showBubble('你好呀！有什么想问我的吗？')
+      }
+      if (hitAreas.includes('head') || hitAreas.includes('Head')) {
+        showBubble('嘻嘻，别摸头啦~ 快问我学习问题吧！')
+      }
+    })
+
+    // 初始动作
+    try {
+      live2dModel.internalModel?.motionManager?.startRandomMotion('idle')
+    } catch (e) { /* ignore */ }
+
+    modelLoading.value = false
+    showBubble('你好！我是花仙老师，有什么想学的吗？')
+  } catch (err) {
+    console.error('Live2D model load error:', err)
+    modelLoading.value = false
+    modelError.value = true
+  }
 }
 
-/* ========== 语音合成 ========== */
+/* ========== 交互功能 ========== */
+function triggerMotion() {
+  if (!live2dModel) return
+  try {
+    const mm = live2dModel.internalModel?.motionManager
+    if (mm) {
+      const groups = Object.keys(mm.definitions || {})
+      if (groups.length > 0) {
+        const group = groups[Math.floor(Math.random() * groups.length)]
+        mm.startRandomMotion(group)
+      }
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function switchModel() {
+  currentModelIndex = (currentModelIndex + 1) % modelList.length
+  showBubble('正在换装...')
+  loadModel()
+}
+
+function showBubble(text, duration = 4000) {
+  bubbleText.value = text
+  clearTimeout(bubbleTimer)
+  bubbleTimer = setTimeout(() => { bubbleText.value = '' }, duration)
+}
+
+/* ========== 语音合成 + 口型同步 ========== */
 function getChineseVoice() {
   const voices = window.speechSynthesis?.getVoices() || []
-  // 优先选中文女声
   return voices.find(v => v.lang.includes('zh') && v.name.includes('Female'))
     || voices.find(v => v.lang.includes('zh-CN'))
     || voices.find(v => v.lang.includes('zh'))
@@ -244,18 +318,11 @@ function speakText(text) {
   if (!window.speechSynthesis || !voiceEnabled.value) return
   stopSpeaking()
 
-  // 清除 Markdown 标记，提取纯文本
   const plainText = text
-    .replace(/#{1,6}\s/g, '')
-    .replace(/\*{1,2}(.*?)\*{1,2}/g, '$1')
-    .replace(/`(.*?)`/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\|.*?\|/g, '')
-    .replace(/[-*]\s/g, '')
-    .replace(/\n{2,}/g, '。')
-    .replace(/\n/g, '，')
-    .trim()
-
+    .replace(/#{1,6}\s/g, '').replace(/\*{1,2}(.*?)\*{1,2}/g, '$1')
+    .replace(/`(.*?)`/g, '$1').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/\|.*?\|/g, '').replace(/[-*]\s/g, '')
+    .replace(/\n{2,}/g, '。').replace(/\n/g, '，').trim()
   if (!plainText) return
 
   const utterance = new SpeechSynthesisUtterance(plainText)
@@ -266,28 +333,57 @@ function speakText(text) {
   utterance.pitch = 1.1
   utterance.volume = 1
 
-  utterance.onstart = () => { isSpeaking.value = true }
-  utterance.onend = () => { isSpeaking.value = false }
-  utterance.onerror = () => { isSpeaking.value = false }
+  utterance.onstart = () => { isSpeaking.value = true; startLipSync() }
+  utterance.onend = () => { isSpeaking.value = false; stopLipSync() }
+  utterance.onerror = () => { isSpeaking.value = false; stopLipSync() }
 
-  currentUtterance = utterance
   window.speechSynthesis.speak(utterance)
 }
 
 function stopSpeaking() {
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel()
-  }
+  window.speechSynthesis?.cancel()
   isSpeaking.value = false
-  currentUtterance = null
+  stopLipSync()
+}
+
+function startLipSync() {
+  stopLipSync()
+  lipSyncTimer = setInterval(() => {
+    if (!live2dModel?.internalModel?.coreModel) return
+    try {
+      const core = live2dModel.internalModel.coreModel
+      const p = core.model?.parameters?.getParameterById?.('ParamMouthOpenY')
+        || core.model?.parameters?.getParameterById?.('PARAM_MOUTH_OPEN_Y')
+      if (p) p.setValue(Math.random() * 0.8 + 0.2)
+    } catch (e) { /* ignore */ }
+  }, 100)
+}
+
+function stopLipSync() {
+  if (lipSyncTimer) { clearInterval(lipSyncTimer); lipSyncTimer = null }
+  if (live2dModel?.internalModel?.coreModel) {
+    try {
+      const core = live2dModel.internalModel.coreModel
+      const p = core.model?.parameters?.getParameterById?.('ParamMouthOpenY')
+        || core.model?.parameters?.getParameterById?.('PARAM_MOUTH_OPEN_Y')
+      if (p) p.setValue(0)
+    } catch (e) { /* ignore */ }
+  }
 }
 
 function toggleVoice() {
   voiceEnabled.value = !voiceEnabled.value
-  if (!voiceEnabled.value) stopSpeaking()
+  if (!voiceEnabled.value) { stopSpeaking(); showBubble('语音已关闭') }
+  else { showBubble('语音已开启') }
 }
 
 /* ========== 聊天逻辑 ========== */
+function renderMd(t) { if (!t) return ''; try { return marked.parse(t) } catch { return t } }
+
+function scrollBottom() {
+  nextTick(() => { if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight })
+}
+
 async function sendChat() {
   const q = chatInput.value.trim()
   if (!q || chatLoading.value) return
@@ -295,431 +391,263 @@ async function sendChat() {
   chatInput.value = ''
   chatLoading.value = true
   scrollBottom()
+
+  triggerMotion()
+  showBubble('让我想想...')
+
   try {
     const { data } = await api.post('/teacher/chat', { question: q })
     chatMsgs.value.push({ role: 'assistant', content: data.answer })
-    // 自动朗读
-    if (voiceEnabled.value) {
-      nextTick(() => speakText(data.answer))
-    }
+    const short = data.answer.replace(/[#*`\[\]|]/g, '').substring(0, 50) + '...'
+    showBubble(short, 6000)
+
+    if (voiceEnabled.value) { nextTick(() => speakText(data.answer)) }
+    try { live2dModel?.internalModel?.motionManager?.startRandomMotion('tap_body') } catch (e) { /* ignore */ }
   } catch {
     chatMsgs.value.push({ role: 'assistant', content: '老师暂时不在线，请稍后再试。' })
+    showBubble('抱歉，我现在有点忙，请稍后再试~')
   }
   chatLoading.value = false
   scrollBottom()
 }
 
-function askQuick(q) {
-  chatInput.value = q
-  sendChat()
-}
+function askQuick(q) { chatInput.value = q; sendChat() }
+
+/* ========== 生命周期 ========== */
+onMounted(async () => {
+  const { data } = await api.get('/teacher/avatar')
+  info.value = data
+  info.value.name = '花仙老师'
+  info.value.emotions = ['normal', 'happy', 'thinking', 'encouraging']
+
+  nextTick(() => { setTimeout(loadModel, 200) })
+
+  window.speechSynthesis?.getVoices()
+  if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices()
+  }
+})
+
+onUnmounted(() => {
+  stopSpeaking()
+  clearTimeout(bubbleTimer)
+  live2dModel?.destroy()
+  pixiApp?.destroy(true)
+  live2dModel = null
+  pixiApp = null
+})
 </script>
 
 <style scoped>
 /* ===== 布局 ===== */
 .teacher-layout {
   display: grid;
-  grid-template-columns: 380px 1fr;
+  grid-template-columns: 400px 1fr;
   gap: 20px;
   height: calc(100vh - 120px);
 }
 
-/* ===== 数字人形象面板 ===== */
-.avatar-panel {
+/* ===== Live2D 面板 ===== */
+.live2d-panel {
   background: var(--bg-card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0 20px 20px;
-  position: relative;
   overflow: hidden;
   border: 1px solid rgba(0,0,0,0.03);
 }
 
-.avatar-bg {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(244,114,182,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 30% 80%, rgba(139,92,246,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 60%, rgba(59,130,246,0.06) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-/* 数字人舞台 */
-.avatar-stage {
+.live2d-stage {
   position: relative;
-  margin-top: 24px;
-  margin-bottom: 16px;
-  z-index: 1;
-}
-
-.avatar-frame {
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
+  height: 380px;
+  background: linear-gradient(180deg, #f0e6ff 0%, #e8f0ff 50%, #f5f0ff 100%);
   overflow: hidden;
-  position: relative;
-  box-shadow:
-    0 0 0 4px rgba(244,114,182,0.2),
-    0 0 0 8px rgba(139,92,246,0.1),
-    0 20px 60px rgba(0,0,0,0.12);
-  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
 }
 
-.avatar-img {
+.live2d-canvas {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.4,0,0.2,1);
-  animation: idle-breathe 4s ease-in-out infinite;
+  display: block;
 }
 
-/* 空闲呼吸动画 */
-@keyframes idle-breathe {
-  0%, 100% { transform: scale(1) translateY(0); }
-  50% { transform: scale(1.02) translateY(-3px); }
+/* 加载状态 */
+.loading-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  background: linear-gradient(180deg, #f0e6ff 0%, #e8f0ff 50%, #f5f0ff 100%);
+  color: var(--text-secondary); font-size: 14px; font-weight: 500;
+  z-index: 10;
 }
-
-/* 说话时增强动画 */
-.avatar-stage.speaking .avatar-frame {
-  box-shadow:
-    0 0 0 4px rgba(244,114,182,0.35),
-    0 0 0 10px rgba(139,92,246,0.15),
-    0 0 40px rgba(244,114,182,0.2),
-    0 20px 60px rgba(0,0,0,0.12);
-  animation: speaking-move 2.5s ease-in-out infinite;
+.loading-overlay.error { color: var(--accent-orange); }
+.error-icon { font-size: 32px; }
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
 }
-
-.avatar-stage.speaking .avatar-img {
-  animation: speaking-face 1.8s ease-in-out infinite;
+@keyframes spin { to { transform: rotate(360deg); } }
+.retry-btn {
+  margin-top: 6px; padding: 6px 20px; border-radius: 16px;
+  border: 1.5px solid var(--primary); background: transparent;
+  color: var(--primary); font-weight: 600; cursor: pointer; transition: all 0.2s;
 }
+.retry-btn:hover { background: var(--primary); color: #fff; }
 
-@keyframes speaking-move {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.03) rotate(-1.5deg); }
-  50% { transform: scale(1.05) rotate(0deg); }
-  75% { transform: scale(1.03) rotate(1.5deg); }
-}
-
-@keyframes speaking-face {
-  0%, 100% { transform: scale(1) translateY(0); }
-  30% { transform: scale(1.01) translateY(-2px); }
-  60% { transform: scale(1.03) translateY(-4px); }
-}
-
-/* 语音波纹 */
-.voice-ripple {
-  position: absolute;
-  inset: -20px;
-  border-radius: 50%;
+/* 对话气泡 */
+.speech-bubble {
+  position: absolute; top: 16px; left: 50%;
+  transform: translateX(-50%); max-width: 280px; z-index: 5;
   pointer-events: none;
 }
-.voice-ripple span {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(244,114,182,0.3);
-  animation: ripple-out 2s ease-out infinite;
+.bubble-content {
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+  padding: 10px 16px; border-radius: 16px;
+  font-size: 13px; line-height: 1.6; color: var(--text-primary);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid rgba(255,255,255,0.5); text-align: center;
 }
-.voice-ripple span:nth-child(2) { animation-delay: 0.5s; }
-.voice-ripple span:nth-child(3) { animation-delay: 1s; }
-
-@keyframes ripple-out {
-  0% { transform: scale(0.9); opacity: 0.8; }
-  100% { transform: scale(1.3); opacity: 0; }
+.bubble-arrow {
+  width: 0; height: 0;
+  border-left: 8px solid transparent; border-right: 8px solid transparent;
+  border-top: 8px solid rgba(255,255,255,0.95);
+  margin: 0 auto;
 }
-
-/* 底部光晕 */
-.avatar-glow {
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  height: 40px;
-  background: radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 70%);
-  border-radius: 50%;
-  animation: glow-pulse 3s ease-in-out infinite;
+.bubble-enter-active { animation: bubble-in 0.3s ease-out; }
+.bubble-leave-active { animation: bubble-out 0.2s ease-in; }
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
-
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.5; transform: translateX(-50%) scaleX(1); }
-  50% { opacity: 1; transform: translateX(-50%) scaleX(1.15); }
-}
-
-/* 说话指示器 */
-.speaking-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 8px 20px;
-  background: linear-gradient(135deg, rgba(244,114,182,0.1), rgba(139,92,246,0.1));
-  border-radius: 20px;
-  border: 1px solid rgba(244,114,182,0.2);
-}
-
-.wave-bars {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 20px;
-}
-.wave-bars span {
-  width: 3px;
-  height: 6px;
-  background: linear-gradient(to top, #f472b6, #8b5cf6);
-  border-radius: 2px;
-  animation: wave-bar 0.8s ease-in-out infinite alternate;
-}
-.wave-bars span:nth-child(odd) { animation-direction: alternate-reverse; }
-
-@keyframes wave-bar {
-  0% { height: 4px; }
-  100% { height: 18px; }
-}
-
-.speaking-text {
-  font-size: 13px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #ec4899, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+@keyframes bubble-out {
+  from { opacity: 1; transform: translateX(-50%) scale(1); }
+  to { opacity: 0; transform: translateX(-50%) scale(0.9); }
 }
 
 /* 教师信息 */
-.teacher-info {
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-.teacher-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-.teacher-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
-}
-.status-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: #94a3b8; flex-shrink: 0;
-}
-.status-dot.online {
-  background: #22c55e;
-  animation: status-pulse 2s ease-in-out infinite;
-}
+.teacher-info { text-align: center; padding: 14px 20px 0; }
+.teacher-name { font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0; }
+.teacher-status { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.status-dot.online { background: #22c55e; animation: status-pulse 2s ease-in-out infinite; }
 @keyframes status-pulse {
   0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
   50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
   100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
 }
 .status-text { font-size: 13px; color: var(--text-secondary); }
+.speaking-tag {
+  font-size: 12px; padding: 2px 10px; border-radius: 10px;
+  background: linear-gradient(135deg, #fce7f3, #e0e7ff);
+  color: var(--primary); font-weight: 600; animation: pulse-tag 1.5s infinite;
+}
+@keyframes pulse-tag { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
 /* 控制栏 */
-.control-bar {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  position: relative;
-  z-index: 1;
-}
+.control-bar { display: flex; gap: 8px; padding: 14px 16px 0; justify-content: center; flex-wrap: wrap; }
 .ctrl-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1.5px solid var(--border);
-  background: var(--bg-card);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  transition: all 0.25s;
+  display: flex; align-items: center; gap: 5px;
+  padding: 7px 14px; border-radius: 18px;
+  border: 1.5px solid var(--border); background: var(--bg-card);
+  cursor: pointer; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary); transition: all 0.25s;
 }
-.ctrl-btn:hover {
-  border-color: var(--primary-light);
-  color: var(--primary);
-  background: var(--primary-bg);
-  transform: translateY(-1px);
-}
+.ctrl-btn:hover { border-color: var(--primary-light); color: var(--primary); background: var(--primary-bg); transform: translateY(-1px); }
 .ctrl-btn.active {
-  background: var(--gradient);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 14px rgba(79,110,247,0.25);
+  background: var(--gradient); color: #fff; border-color: transparent;
+  box-shadow: 0 3px 12px rgba(79,110,247,0.25);
 }
-.emotion-ctrl {
-  padding: 8px 12px;
-  font-size: 18px;
-}
+.stop-btn { border-color: var(--accent-red) !important; color: var(--accent-red) !important; }
+.stop-btn:hover { background: #fef2f2 !important; }
 
 /* 进度卡 */
-.progress-card {
-  width: 100%;
-  margin-top: 18px;
-  padding: 16px;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  position: relative;
-  z-index: 1;
-}
-.stat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-}
+.progress-card { margin: 14px 16px 16px; padding: 14px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.stat-row { display: flex; align-items: center; justify-content: space-around; }
 .stat-item { flex: 1; text-align: center; }
-.stat-value {
-  font-size: 22px; font-weight: 800; color: var(--primary);
-}
-.stat-unit { font-size: 13px; font-weight: 600; }
-.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-.stat-divider { width: 1px; height: 28px; background: var(--border); }
+.stat-value { font-size: 20px; font-weight: 800; color: var(--primary); }
+.stat-unit { font-size: 12px; font-weight: 600; }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.stat-divider { width: 1px; height: 26px; background: var(--border); }
 
 /* ===== 对话卡 ===== */
 .chat-card {
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.03);
+  background: var(--bg-card); border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(0,0,0,0.03);
 }
-
 .chat-head {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
   background: linear-gradient(to bottom, #fafbff, var(--bg-card));
 }
 .chat-head-left { display: flex; align-items: center; gap: 12px; }
 .chat-head-avatar {
-  width: 42px; height: 42px; border-radius: 50%; overflow: hidden;
-  box-shadow: 0 4px 12px rgba(79,110,247,0.2);
-  border: 2px solid rgba(244,114,182,0.3);
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--gradient); display: flex; align-items: center; justify-content: center;
+  font-size: 20px; box-shadow: 0 4px 12px rgba(79,110,247,0.2);
 }
-.mini-avatar { width: 100%; height: 100%; object-fit: cover; }
 .chat-head-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .chat-head-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .chat-head-badge {
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; background: var(--primary-bg);
-  border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--primary);
+  padding: 5px 12px; background: var(--primary-bg); border-radius: 20px;
+  font-size: 12px; font-weight: 500; color: var(--primary);
 }
-.badge-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--primary);
-  animation: badge-blink 2s infinite;
-}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: badge-blink 2s infinite; }
 @keyframes badge-blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-/* 对话主体 */
-.chat-body { flex: 1; overflow-y: auto; padding: 24px; }
-
-.chat-empty { text-align: center; padding: 50px 20px; }
-.empty-icon { font-size: 56px; margin-bottom: 12px; }
-.empty-title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-.empty-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
-
-/* 快捷问题 */
-.quick-questions {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  justify-content: center; max-width: 400px; margin: 0 auto;
-}
+.chat-body { flex: 1; overflow-y: auto; padding: 20px; }
+.chat-empty { text-align: center; padding: 40px 20px; }
+.empty-icon { font-size: 48px; margin-bottom: 10px; }
+.empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+.empty-hint { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+.quick-questions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 380px; margin: 0 auto; }
 .quick-btn {
-  padding: 8px 16px; border-radius: 20px;
+  padding: 7px 14px; border-radius: 18px;
   border: 1.5px solid var(--border); background: var(--bg-card);
-  cursor: pointer; font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; font-size: 12px; color: var(--text-secondary);
   transition: all 0.2s; font-weight: 500;
 }
-.quick-btn:hover {
-  border-color: var(--primary); color: var(--primary);
-  background: var(--primary-bg); transform: translateY(-1px);
-}
+.quick-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
 
-/* 消息 */
 .msg-content { flex: 1; min-width: 0; }
-
-/* 消息头像 */
-.avatar-tiny {
-  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
-}
-
-/* 消息操作按钮 */
-.msg-actions {
-  display: flex; gap: 8px; margin-top: 8px;
-}
+.msg-actions { display: flex; gap: 6px; margin-top: 6px; }
 .action-btn {
   display: flex; align-items: center; gap: 4px;
-  padding: 4px 10px; border-radius: 12px;
+  padding: 3px 10px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--bg-card);
-  cursor: pointer; font-size: 12px; color: var(--text-muted);
-  transition: all 0.2s;
+  cursor: pointer; font-size: 11px; color: var(--text-muted); transition: all 0.2s;
 }
-.action-btn:hover {
-  border-color: var(--primary); color: var(--primary);
-  background: var(--primary-bg);
-}
-.action-btn.stop {
-  border-color: var(--accent-red); color: var(--accent-red);
-}
-.action-btn.stop:hover {
-  background: #fef2f2;
-}
+.action-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
 
-/* 输入区 */
 .chat-input-bar {
-  padding: 16px 20px;
-  border-top: 1px solid var(--border);
+  padding: 14px 20px; border-top: 1px solid var(--border);
   display: flex; gap: 12px; align-items: center;
   background: linear-gradient(to top, #fafbff, var(--bg-card));
 }
 .input-wrapper { flex: 1; }
 .input-wrapper :deep(.el-input__wrapper) {
-  border-radius: 24px; padding: 4px 18px;
-  box-shadow: 0 0 0 1px var(--border) inset;
-  transition: all 0.25s;
+  border-radius: 22px; padding: 4px 16px;
+  box-shadow: 0 0 0 1px var(--border) inset; transition: all 0.25s;
 }
-.input-wrapper :deep(.el-input__wrapper:focus-within),
-.input-wrapper :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px var(--primary-light) inset;
-}
+.input-wrapper :deep(.el-input__wrapper:focus-within) { box-shadow: 0 0 0 2px var(--primary-light) inset; }
 .btn-send {
-  height: 44px; padding: 0 24px; border-radius: 22px;
+  height: 42px; padding: 0 22px; border-radius: 21px;
   background: var(--gradient) !important; border: none !important;
   color: #fff; font-weight: 600; font-size: 14px; flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(79,110,247,0.3);
-  transition: all 0.25s;
+  box-shadow: 0 4px 14px rgba(79,110,247,0.3); transition: all 0.25s;
 }
-.btn-send:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79,110,247,0.4);
-}
+.btn-send:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,110,247,0.4); }
 
 /* ===== 响应式 ===== */
 @media (max-width: 1100px) {
   .teacher-layout { grid-template-columns: 1fr; height: auto; }
-  .avatar-panel { max-height: none; }
+  .live2d-stage { height: 300px; }
   .chat-card { height: 500px; }
 }
 @media (max-width: 600px) {
-  .avatar-frame { width: 180px; height: 180px; }
+  .live2d-stage { height: 240px; }
   .quick-questions { flex-direction: column; }
   .chat-head-badge { display: none; }
 }
